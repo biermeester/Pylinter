@@ -1,14 +1,14 @@
 {
-    // Write messages to console
+    // When versbose is 'true', various messages will be written to the console.
     // values: true or false
     "verbose": false,
     // The full path to the Python executable you want to
     // run Pylint with or simply use 'python'.
     "python_bin": "python",
     // Full path to the lint.py module in the pylint package
-    "pylint_path": "C:\\Development\\Python27\\Lib\\site-packages\\pylint\\lint.py",
-    // Optional full path toa Pylint configuration file
-    "pylint_rc": "N:\\development\\fabrix\\pylintrc",
+    "pylint_path": "",
+    // Optional full path to a Pylint configuration file
+    "pylint_rc": "",
     // Set to true to automtically run Pylint on save
     "run_on_save": true,
     // Ignore Pylint error types. Possible values:
