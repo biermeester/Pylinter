@@ -48,17 +48,17 @@ Commands & Keyboard Shortcuts
 
 The plugin can be invoked by a keyboard shortcut:
 
-* **OS X**:: ``Command+Alt+z``
-* **Linux, Windows**:: ``Control+Alt+z``
+* **OS X**: ``Command+Alt+z``
+* **Linux, Windows**: ``Control+Alt+z``
 
 **Toggle Marking**
 The marking of the errors in the file can be toggled off and on:
 
-* **OS X**:: ``Command+Alt+x``
-* **Linux, Windows**:: ``Control+Alt+x``
+* **OS X**: ``Command+Alt+x``
+* **Linux, Windows**: ``Control+Alt+x``
 
 **Quick List**
 To see a quick list of all the Pylint errors use:
 
-* **OS X**:: ``Command+Alt+c``
-* **Linux, Windows**:: ``Control+Alt+c``
+* **OS X**: ``Command+Alt+c``
+* **Linux, Windows**: ``Control+Alt+c``
