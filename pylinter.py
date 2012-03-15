@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+""" PyLinter
+
+    https://github.com/biermeester/Pylinter
+"""
+
 import os.path
 import re
 import threading

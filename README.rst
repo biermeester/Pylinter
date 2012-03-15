@@ -62,3 +62,9 @@ To see a quick list of all the Pylint errors use:
 
 * **OS X**: ``Command+Alt+c``
 * **Linux, Windows**: ``Control+Alt+c``
+
+Todo
+====
+
+Possibly add some code to allow for Python path manipulation.
+
