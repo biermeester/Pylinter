@@ -52,5 +52,24 @@ The plugin can be invoked by a keyboard shortcut:
 
 * **Linux, Windows**::
 
-  next: Control+Alt+z
+  run: Control+Alt+z
 
+The marking of the errors in the file can be toggled off and on:
+
+* **OS X**::
+
+  run: Command+Alt+x
+
+* **Linux, Windows**::
+
+  run: Control+Alt+x
+
+To see a quick list of all the Pylint errors use:
+
+* **OS X**::
+
+  run: Command+Alt+c
+
+* **Linux, Windows**::
+
+  run: Control+Alt+c
