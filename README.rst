@@ -29,14 +29,14 @@ module of your Pylint installation!
 * **pylint_rc**: The full path to the Pylint configuration file you want to use, if any.
 
 * **run_on_save**: If this setting is set to ``true``, Pylint will be invoked each time 
-you save a Python sourc code file.
+  you save a Python sourc code file.
 
 * **ignore**: A list of Pylint errors types which you wish to ignore.
-    
-    Possible values:
-    
-    * "R" : Refactor for a "good practice" metric violation
-    * "C" : Convention for coding standard violation
-    * "W" : Warning for stylistic problems, or minor programming issues
-    * "E" : Error for important programming issues (i.e. most probably bug)
-    * "F" : Fatal for errors which prevented further processing
+
+  Possible values:
+
+  * "R" : Refactor for a "good practice" metric violation
+  * "C" : Convention for coding standard violation
+  * "W" : Warning for stylistic problems, or minor programming issues
+  * "E" : Error for important programming issues (i.e. most probably bug)
+  * "F" : Fatal for errors which prevented further processing
