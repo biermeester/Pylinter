@@ -11,3 +11,7 @@ source code checking by Pylint.
 Configuration
 =============
 
+Before the plugin can be used, you *must* provide a full path to the ``lint.py``
+module of your pylint installation!
+
+
