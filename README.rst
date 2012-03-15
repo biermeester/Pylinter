@@ -7,7 +7,7 @@ source code checking by Pylint.
 Since Pylint can take a while before it has completed its task (multiple seconds), 
 it is run from a separate thread, so the plugin won't lock up Sublime Text.
 
-The plugin can be automatically invokes *on save* or by a keyboard shortcut.
+The plugin can be automatically invoked *on save* or by a keyboard shortcut.
 
 Support for Pylint configuration files is included.
 
@@ -22,7 +22,7 @@ Before the plugin can be used, you *must* provide a full path to the ``lint.py``
 module of your Pylint installation!
 
 * **python_bin**: The full path to the Python executable you want to use for running
-Pylint or simply ``python`` if you want to use your default python installation.
+  Pylint or simply ``python`` if you want to use your default python installation.
 
 * **pylint_path**: The full path to the ``lint.py`` module.
 
