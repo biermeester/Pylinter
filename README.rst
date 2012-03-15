@@ -2,19 +2,19 @@ Pylinter Sublime Text 2 Plugin
 ------------------------------
 
 This is a small plugin for Sublime Text 2 that allows automatic Python
-source code checking by Pylint. 
+source code checking by Pylint.
 
-Since Pylint can take a while before it has completed its task (multiple seconds), 
+Since Pylint can take a while before it has completed its task (multiple seconds),
 it is run from a separate thread, so the plugin won't lock up Sublime Text.
 
 The plugin can be automatically invoked *on save* or by a keyboard shortcut.
 
 Support for Pylint configuration files is included.
 
-**Note**:: 
+**Note**::
 
     Pylint needs to be installed separately!
-    
+
 Configuration
 =============
 
@@ -28,10 +28,10 @@ module of your Pylint installation!
 
 * **pylint_rc**: The full path to the Pylint configuration file you want to use, if any.
 
-* **run_on_save**: If this setting is set to ``true``, Pylint will be invoked each time 
+* **run_on_save**: If this setting is set to ``true``, Pylint will be invoked each time
   you save a Python sourc code file.
 
-* **ignore**: A list of Pylint errors types which you wish to ignore.
+* **ignore**: A list of Pylint error types which you wish to ignore.
 
   Possible values:
 
@@ -40,3 +40,17 @@ module of your Pylint installation!
   * "W" : Warning for stylistic problems, or minor programming issues
   * "E" : Error for important programming issues (i.e. most probably bug)
   * "F" : Fatal for errors which prevented further processing
+
+Commands & Keyboard Shortcuts
+=============================
+
+The plugin can be invoked by a keyboard shortcut:
+
+* **OS X**::
+
+  run: Command+Alt+z
+
+* **Linux, Windows**::
+
+  next: Control+Alt+z
+
