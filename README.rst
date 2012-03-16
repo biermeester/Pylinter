@@ -49,9 +49,8 @@ Project settings
 ~~~~~~~~~~~~~~~~
 
 You may also store settings in your *.sublime-project files. Create a ``"pylinter"``
-section as shown below and override any or all of the describd settings.
+section as shown below and override any or all of the describd settings::
 
-``
     {
         "folders":
         [
@@ -66,7 +65,6 @@ section as shown below and override any or all of the describd settings.
             }
         }
     }
-``
 
 
 Commands & Keyboard Shortcuts
