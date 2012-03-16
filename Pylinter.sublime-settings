@@ -5,6 +5,12 @@
     // The full path to the Python executable you want to
     // run Pylint with or simply use 'python'.
     "python_bin": "python",
+    // The following paths will be added Pylint's Python path
+    "python_path": [
+
+                   ],
+    // Optionally set the working directory
+    "working_dir": "",
     // Full path to the lint.py module in the pylint package
     "pylint_path": "",
     // Optional full path to a Pylint configuration file

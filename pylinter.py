@@ -6,6 +6,7 @@
 """
 
 import os.path
+import sys
 import re
 import threading
 import subprocess
@@ -39,6 +40,7 @@ def show_errors(view):
 class PylinterCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, **kwargs):
+
         self._read_settings()
 
         if kwargs.has_key('action') and kwargs['action'] == 'toggle':
@@ -51,7 +53,13 @@ class PylinterCommand(sublime_plugin.TextCommand):
             speak("Running Pylinter on %s" % self.view.file_name())
 
             if self.view.file_name().endswith('.py'):
-                thread = PylintThread(self.view, self.python_bin, self.pylint_path, self.pylint_rc, self.ignore)
+                thread = PylintThread(self.view,
+                                      self.python_bin,
+                                      self.python_path,
+                                      self.working_dir,
+                                      self.pylint_path,
+                                      self.pylint_rc,
+                                      self.ignore)
                 thread.start()
                 self.progress_tracker(thread)
 
@@ -61,11 +69,49 @@ class PylinterCommand(sublime_plugin.TextCommand):
 
     def _read_settings(self):
         global PYLINTER_VERBOSE
+
         PYLINTER_VERBOSE = settings.get('verbose', False)
         self.python_bin = settings.get('python_bin', 'python')
+        self.python_path = ";".join([str(p) for p in settings.get('python_path', [])])
+        self.working_dir = settings.get('working_dir', None) or None
         self.pylint_path = settings.get('pylint_path', None)
         self.pylint_rc = settings.get('pylint_rc', None) or ""
         self.ignore = [t.lower() for t in settings.get('ignore', [])]
+
+        # Search for project settings
+        try:
+            for folder in sublime.active_window().folders():
+                files_list = os.listdir(folder)
+                for f in [fname for fname in files_list if fname.endswith('sublime-project')]:
+                    speak("Scanning projectfile %s for additional settings" % f)
+                    import json
+                    with open(os.path.join(folder, f),'r') as psettings_file:
+                        project_settings = json.load(psettings_file)
+
+                    if project_settings.has_key('settings'):
+                        project_settings = project_settings['settings']
+                        if project_settings.has_key('pylinter'):
+                            project_settings = project_settings['pylinter']
+
+                            if project_settings.has_key('verbose'):
+                                PYLINTER_VERBOSE = project_settings.get('verbose', False)
+                            if project_settings.has_key('python_bin'):
+                                self.python_bin = project_settings.get('python_bin', 'python')
+                            if project_settings.has_key('python_path'):
+                                self.python_path = ";".join([str(p) for p in project_settings.get('python_path', [])])
+                            if project_settings.has_key('working_dir'):
+                                self.working_dir = project_settings.get('working_dir', None) or None
+                            if project_settings.has_key('pylint_path'):
+                                self.pylint_path = project_settings.get('pylint_path', None)
+                            if project_settings.has_key('pylint_rc'):
+                                self.pylint_rc = project_settings.get('pylint_rc', None) or ""
+                            if project_settings.has_key('ignore'):
+                                self.ignore = [t.lower() for t in project_settings.get('ignore', [])]
+
+                    raise StopIteration()
+        except StopIteration:
+            pass
+
 
         if not self.pylint_path:
             sublime.error_message("Please define the full path to 'lint.py' in the settings.")
@@ -101,12 +147,14 @@ class PylinterCommand(sublime_plugin.TextCommand):
             return file_name.endswith('.py')
 
 class PylintThread(threading.Thread):
-    def __init__(self, view, python_bin, pylint_path, pylint_rc, ignore):
+    def __init__(self, view, python_bin, python_path, working_dir, pylint_path, pylint_rc, ignore):
         self.view = view
         # Grab the file name here, since view cannot be accessed
         # from anywhere but the main application thread
         self.file_name = view.file_name()
         self.python_bin = python_bin
+        self.python_path = python_path
+        self.working_dir = working_dir
         self.pylint_path = pylint_path
         self.pylint_rc = pylint_rc
         self.ignore = ignore
@@ -129,7 +177,12 @@ class PylintThread(threading.Thread):
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
-        p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo)
+        os.environ['PYTHONPATH'] = ";".join([self.python_path, os.environ.get('PYTHONPATH', "")])
+        p = subprocess.Popen(command,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             startupinfo=startupinfo,
+                             cwd=self.working_dir)
         output, dummy = p.communicate()
 
         lines = [line for line in output.split('\n')]

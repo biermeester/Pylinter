@@ -24,6 +24,10 @@ module of your Pylint installation!
 * **python_bin**: The full path to the Python executable you want to use for running
   Pylint or simply ``python`` if you want to use your default python installation.
 
+* **python_path**: An optional list of paths that will be added to Pylint's Python path.
+
+* **working_dir**: An optional path to the working directory from which Pylint will be run.
+
 * **pylint_path**: The full path to the ``lint.py`` module.
 
 * **pylint_rc**: The full path to the Pylint configuration file you want to use, if any.
@@ -40,6 +44,30 @@ module of your Pylint installation!
   * "W" : Warning for stylistic problems, or minor programming issues
   * "E" : Error for important programming issues (i.e. most probably bug)
   * "F" : Fatal for errors which prevented further processing
+
+Project settings
+~~~~~~~~~~~~~~~~
+
+You may also store settings in your *.sublime-project files. Create a ``"pylinter"``
+section as shown below and override any or all of the describd settings.
+
+``
+{
+    "folders":
+    [
+        {
+            "path": "/N/development/fabrix"
+        }
+    ],
+    "settings":
+    {
+        "pylinter":
+        {
+        }
+    }
+}
+``
+
 
 Commands & Keyboard Shortcuts
 =============================
