@@ -52,20 +52,20 @@ You may also store settings in your *.sublime-project files. Create a ``"pylinte
 section as shown below and override any or all of the describd settings.
 
 ``
-{
-    "folders":
-    [
-        {
-            "path": "/N/development/fabrix"
-        }
-    ],
-    "settings":
     {
-        "pylinter":
+        "folders":
+        [
+            {
+                "path": "/N/development/fabrix"
+            }
+        ],
+        "settings":
         {
+            "pylinter":
+            {
+            }
         }
     }
-}
 ``
 
 
