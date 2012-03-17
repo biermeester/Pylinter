@@ -176,6 +176,8 @@ class PylintThread(threading.Thread):
         if os.name == "nt":
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        else:
+            startupinfo = None
 
         os.environ['PYTHONPATH'] = ";".join([self.python_path, os.environ.get('PYTHONPATH', "")])
         p = subprocess.Popen(command,
