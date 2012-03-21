@@ -33,7 +33,7 @@ module of your Pylint installation!
 * **pylint_rc**: The full path to the Pylint configuration file you want to use, if any.
 
 * **run_on_save**: If this setting is set to ``true``, Pylint will be invoked each time
-  you save a Python sourc code file.
+  you save a Python source code file.
 
 * **ignore**: A list of Pylint error types which you wish to ignore.
 
