@@ -235,7 +235,7 @@ def popup_error_list(view):
     if not PYLINTER_ERRORS.has_key(view_id):
         return
 
-    errors = [(key + 1, value) for key, value in PYLINTER_ERRORS[view_id].items() if key != 'visible']
+    errors = [(key + 1, unicode(value, errors='ignore')) for key, value in PYLINTER_ERRORS[view_id].items() if key != 'visible']
     line_nums, panel_items = zip(*sorted(errors, key=lambda error: error[1]))
 
     def on_done(selected_item):
