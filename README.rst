@@ -22,7 +22,8 @@ Before the plugin can be used, you *must* provide a full path to the ``lint.py``
 module of your Pylint installation!
 
 * **python_bin**: The full path to the Python executable you want to use for running
-  Pylint or simply ``python`` if you want to use your default python installation.
+  Pylint (e.g. when you are using virtualenv) or simply ``python`` if you want to use
+  your default python installation.
 
 * **python_path**: An optional list of paths that will be added to Pylint's Python path.
 
