@@ -239,7 +239,6 @@ def popup_error_list(view):
     if len(PYLINTER_ERRORS[view_id]) == 1:
         sublime.message_dialog("No Pylint errors found")
         return
-
     errors = [(key + 1, unicode(value, errors='ignore')) for key, value in PYLINTER_ERRORS[view_id].items() if key != 'visible']
     line_nums, panel_items = zip(*sorted(errors, key=lambda error: error[1]))
 
