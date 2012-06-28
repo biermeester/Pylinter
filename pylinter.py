@@ -23,6 +23,7 @@ P_PYLINT_ERROR = re.compile(r"""
                             (?P<msg>.*)                       # finally, the error message
                             """, re.IGNORECASE|re.VERBOSE)
 
+# To override this, set the 'verbose' setting in the configuration file
 PYLINTER_VERBOSE = False
 PYLINTER_ERRORS = {}
 
@@ -180,6 +181,9 @@ class PylintThread(threading.Thread):
             startupinfo = None
 
         os.environ['PYTHONPATH'] = ";".join([self.python_path, os.environ.get('PYTHONPATH', "")])
+
+        speak("Running command:\n    ", " ".join(command))
+
         p = subprocess.Popen(command,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
@@ -239,6 +243,7 @@ def popup_error_list(view):
     if len(PYLINTER_ERRORS[view_id]) == 1:
         sublime.message_dialog("No Pylint errors found")
         return
+
     errors = [(key + 1, unicode(value, errors='ignore')) for key, value in PYLINTER_ERRORS[view_id].items() if key != 'visible']
     line_nums, panel_items = zip(*sorted(errors, key=lambda error: error[1]))
 
