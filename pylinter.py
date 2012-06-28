@@ -176,6 +176,8 @@ class PylintThread(threading.Thread):
         if os.name == "nt":
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        else:
+            startupinfo = None
 
         os.environ['PYTHONPATH'] = ";".join([self.python_path, os.environ.get('PYTHONPATH', "")])
         p = subprocess.Popen(command,
@@ -233,7 +235,12 @@ def popup_error_list(view):
     if not PYLINTER_ERRORS.has_key(view_id):
         return
 
-    errors = [(key + 1, value) for key, value in PYLINTER_ERRORS[view_id].items() if key != 'visible']
+    # No errors were found    
+    if len(PYLINTER_ERRORS[view_id]) == 1:
+        sublime.message_dialog("No Pylint errors found")
+        return
+
+    errors = [(key + 1, unicode(value, errors='ignore')) for key, value in PYLINTER_ERRORS[view_id].items() if key != 'visible']
     line_nums, panel_items = zip(*sorted(errors, key=lambda error: error[1]))
 
     def on_done(selected_item):
