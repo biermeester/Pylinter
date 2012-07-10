@@ -180,7 +180,20 @@ class PylintThread(threading.Thread):
         else:
             startupinfo = None
 
-        os.environ['PYTHONPATH'] = ";".join([self.python_path, os.environ.get('PYTHONPATH', "")])
+        original = os.environ['PYTHONPATH']
+        pythonpaths = set()
+        for element in original.split(';'):
+            for subelement in element.split(':'):
+                if not subelement in [''] and len(subelement) > 1:
+                    #speak('ElementA: ', subelement)
+                    pythonpaths.add(subelement)
+        for element in self.python_path:
+            for subelement in element.split(':'):
+                if not subelement in [''] and len(subelement) > 1:
+                    #speak('ElementB: ', subelement)
+                    pythonpaths.add(subelement)
+
+        os.environ['PYTHONPATH'] = ":".join(pythonpaths)
 
         speak("Running command:\n    ", " ".join(command))
 
