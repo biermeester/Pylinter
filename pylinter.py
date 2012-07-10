@@ -6,7 +6,6 @@
 """
 
 import os.path
-import sys
 import re
 import threading
 import subprocess
@@ -33,6 +32,9 @@ P_PYLINT_ERROR = re.compile(r"""
 # To override this, set the 'verbose' setting in the configuration file
 PYLINTER_VERBOSE = False
 PYLINTER_ERRORS = {}
+
+PATH_SEPERATOR = ';' if os.name == "nt" else ':'
+SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
 
 def speak(*msg):
     """ Log messages to the console if VERBOSE is True """
@@ -80,7 +82,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
 
         PYLINTER_VERBOSE = get_setting('verbose', False)
         self.python_bin = get_setting('python_bin', 'python')
-        self.python_path = ";".join([str(p) for p in get_setting('python_path', [])])
+        self.python_path = PATH_SEPERATOR.join([str(p) for p in get_setting('python_path', [])])
         self.working_dir = get_setting('working_dir', None) or None
         self.pylint_path = get_setting('pylint_path', None)
         self.pylint_rc = get_setting('pylint_rc', None) or ""
@@ -152,20 +154,17 @@ class PylintThread(threading.Thread):
         else:
             startupinfo = None
 
-        original = os.environ['PYTHONPATH']
-        pythonpaths = set()
-        for element in original.split(';'):
-            for subelement in element.split(':'):
-                if not subelement in [''] and len(subelement) > 1:
-                    #speak('ElementA: ', subelement)
-                    pythonpaths.add(subelement)
-        for element in self.python_path:
-            for subelement in element.split(':'):
-                if not subelement in [''] and len(subelement) > 1:
-                    #speak('ElementB: ', subelement)
-                    pythonpaths.add(subelement)
+        original = os.environ.get('PYTHONPATH', '')
 
-        os.environ['PYTHONPATH'] = ":".join(pythonpaths)
+        speak("Current PYTHONPATH is '%s'" % original)
+
+        org_path_lst = [p for p in re.split(SEPERATOR_PATTERN, original) if p]
+        pyl_path_lst = [p for p in re.split(SEPERATOR_PATTERN, self.python_path) if p]
+
+        pythonpaths = set(org_path_lst + pyl_path_lst)
+
+        os.environ['PYTHONPATH'] = PATH_SEPERATOR.join(pythonpaths)
+        speak("Updated PYTHONPATH is '%s'" % os.environ['PYTHONPATH'])
 
         speak("Running command:\n    ", " ".join(command))
 
