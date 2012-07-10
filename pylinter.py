@@ -14,6 +14,13 @@ import sublime
 import sublime_plugin
 
 settings = sublime.load_settings('Pylinter.sublime-settings')
+def get_setting(name, default):
+    v = sublime.active_window().active_view().settings().get('pylinter', {}).get(name, None)
+    if v != None:
+        return v
+    else:
+        return settings.get(name, default)
+
 
 # Regular expression to disect Pylint error messages
 P_PYLINT_ERROR = re.compile(r"""
@@ -71,48 +78,13 @@ class PylinterCommand(sublime_plugin.TextCommand):
     def _read_settings(self):
         global PYLINTER_VERBOSE
 
-        PYLINTER_VERBOSE = settings.get('verbose', False)
-        self.python_bin = settings.get('python_bin', 'python')
-        self.python_path = ";".join([str(p) for p in settings.get('python_path', [])])
-        self.working_dir = settings.get('working_dir', None) or None
-        self.pylint_path = settings.get('pylint_path', None)
-        self.pylint_rc = settings.get('pylint_rc', None) or ""
-        self.ignore = [t.lower() for t in settings.get('ignore', [])]
-
-        # Search for project settings
-        try:
-            for folder in sublime.active_window().folders():
-                files_list = os.listdir(folder)
-                for f in [fname for fname in files_list if fname.endswith('sublime-project')]:
-                    speak("Scanning projectfile %s for additional settings" % f)
-                    import json
-                    with open(os.path.join(folder, f),'r') as psettings_file:
-                        project_settings = json.load(psettings_file)
-
-                    if project_settings.has_key('settings'):
-                        project_settings = project_settings['settings']
-                        if project_settings.has_key('pylinter'):
-                            project_settings = project_settings['pylinter']
-
-                            if project_settings.has_key('verbose'):
-                                PYLINTER_VERBOSE = project_settings.get('verbose', False)
-                            if project_settings.has_key('python_bin'):
-                                self.python_bin = project_settings.get('python_bin', 'python')
-                            if project_settings.has_key('python_path'):
-                                self.python_path = ";".join([str(p) for p in project_settings.get('python_path', [])])
-                            if project_settings.has_key('working_dir'):
-                                self.working_dir = project_settings.get('working_dir', None) or None
-                            if project_settings.has_key('pylint_path'):
-                                self.pylint_path = project_settings.get('pylint_path', None)
-                            if project_settings.has_key('pylint_rc'):
-                                self.pylint_rc = project_settings.get('pylint_rc', None) or ""
-                            if project_settings.has_key('ignore'):
-                                self.ignore = [t.lower() for t in project_settings.get('ignore', [])]
-
-                    raise StopIteration()
-        except StopIteration:
-            pass
-
+        PYLINTER_VERBOSE = get_setting('verbose', False)
+        self.python_bin = get_setting('python_bin', 'python')
+        self.python_path = ";".join([str(p) for p in get_setting('python_path', [])])
+        self.working_dir = get_setting('working_dir', None) or None
+        self.pylint_path = get_setting('pylint_path', None)
+        self.pylint_rc = get_setting('pylint_rc', None) or ""
+        self.ignore = [t.lower() for t in get_setting('ignore', [])]
 
         if not self.pylint_path:
             sublime.error_message("Please define the full path to 'lint.py' in the settings.")
@@ -233,7 +205,7 @@ class BackgroundPylinter(sublime_plugin.EventListener):
         return view.rowcol(view.sel()[0].end())[0]
 
     def on_post_save(self, view):
-        if view.file_name().endswith('.py') and settings.get('run_on_save', False):
+        if view.file_name().endswith('.py') and get_setting('run_on_save', False):
             view.run_command('pylinter')
 
     def on_selection_modified(self, view):
@@ -252,7 +224,7 @@ def popup_error_list(view):
     if not PYLINTER_ERRORS.has_key(view_id):
         return
 
-    # No errors were found    
+    # No errors were found
     if len(PYLINTER_ERRORS[view_id]) == 1:
         sublime.message_dialog("No Pylint errors found")
         return
