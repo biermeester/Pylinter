@@ -41,11 +41,19 @@ def speak(*msg):
     if PYLINTER_VERBOSE:
         print " - PyLinter: ", " ".join(msg)
 
+ICONS = {"C": "dot", "E": "dot", "F": "dot", "I":"dot", "R": "dot", "W": "dot"}
+
 def show_errors(view):
     outlines = []
-    for line_num in [k for k in PYLINTER_ERRORS[view.id()].keys() if isinstance(k, int)]:
+    outlines2 = {"C": [], "E":[], "F": [], "I":[], "R":[], "W":[]}
+    for line_num, error in PYLINTER_ERRORS[view.id()].items():
+        if not isinstance(line_num, int):
+            continue
+        line = view.line(view.text_point(line_num, 0))
+        outlines2[error[0]].append(line)
         outlines.append(view.line(view.text_point(line_num, 0)))
-    view.add_regions('pylinter', outlines, 'pylinter', 'dot', sublime.DRAW_OUTLINED)
+    for key, regions in outlines2.items():
+        view.add_regions('pylinter.' + key, regions, 'pylinter.' + key, ICONS[key], sublime.DRAW_OUTLINED)
 
 class PylinterCommand(sublime_plugin.TextCommand):
 
