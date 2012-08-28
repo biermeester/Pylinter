@@ -6,7 +6,7 @@ Latest changes
 
 **2012-08-29**
 
-* Added an 'ignore' function, allowing for easy insertion of ``#pylint disable=``
+* Added an 'ignore' function, allowing for easy insertion of ``#pylint: disable=``
   statements/comments.
 
 Introduction
