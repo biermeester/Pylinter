@@ -1,6 +1,14 @@
 Pylinter Sublime Text 2 Plugin
 ------------------------------
 
+Latest changes
+==============
+
+**2012-08-29**
+
+* Added an 'ignore' function, allowing for easy insertion of ``#pylint disable=``
+  statements/comments.
+
 This is a small plugin for Sublime Text 2 that allows automatic Python
 source code checking by Pylint.
 
