@@ -79,6 +79,7 @@ The plugin can be invoked by a keyboard shortcut:
 * **Linux, Windows**: ``Control+Alt+z``
 
 **Add pylint ignore comment/statement**
+
 Add a comment to the end of the line with a Pylint error in it, so it will be
 ignored on the next check.
 
@@ -86,12 +87,14 @@ ignored on the next check.
 * **Linux, Windows**: ``Control+Alt+i``
 
 **Toggle Marking**
+
 The marking of the errors in the file can be toggled off and on:
 
 * **OS X**: ``Command+Alt+x``
 * **Linux, Windows**: ``Control+Alt+x``
 
 **Quick List**
+
 To see a quick list of all the Pylint errors use:
 
 * **OS X**: ``Command+Alt+c``
