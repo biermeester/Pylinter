@@ -80,8 +80,8 @@ The plugin can be invoked by a keyboard shortcut:
 
 **Add pylint ignore comment/statement**
 
-Add a comment to the end of the line with a Pylint error in it, so it will be
-ignored on the next check.
+Add a 'Pylint disable' comment to the end of the line with an error code in it,
+so it will be ignored on the next check.
 
 * **OS X**: ``Command+Alt+i``
 * **Linux, Windows**: ``Control+Alt+i``
