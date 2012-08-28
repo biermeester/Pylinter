@@ -53,12 +53,15 @@ class PylinterCommand(sublime_plugin.TextCommand):
 
         self._read_settings()
 
-        if kwargs.has_key('action') and kwargs['action'] == 'toggle':
+        action = kwargs.get('action', None)
+        if action == 'toggle':
             self.toggle_regions()
-        elif kwargs.has_key('action') and kwargs['action'] == 'list':
+        elif action == 'list':
             popup_error_list(self.view)
-        elif kwargs.has_key('action') and kwargs['action'] == 'dump':
+        elif action == 'dump':
             self.dump_errors()
+        elif action == 'ignore':
+            self.add_ignore()
         else:
             speak("Running Pylinter on %s" % self.view.file_name())
 
@@ -81,12 +84,12 @@ class PylinterCommand(sublime_plugin.TextCommand):
         global PYLINTER_VERBOSE
 
         PYLINTER_VERBOSE = get_setting('verbose', False)
-        self.python_bin = get_setting('python_bin', 'python')
-        self.python_path = PATH_SEPERATOR.join([str(p) for p in get_setting('python_path', [])])
-        self.working_dir = get_setting('working_dir', None) or None
-        self.pylint_path = get_setting('pylint_path', None)
-        self.pylint_rc = get_setting('pylint_rc', None) or ""
-        self.ignore = [t.lower() for t in get_setting('ignore', [])]
+        self.python_bin = get_setting('python_bin', 'python') #pylint: disable=W0201
+        self.python_path = PATH_SEPERATOR.join([str(p) for p in get_setting('python_path', [])])  #pylint: disable=W0201
+        self.working_dir = get_setting('working_dir', None) or None #pylint: disable=W0201
+        self.pylint_path = get_setting('pylint_path', None) #pylint: disable=W0201
+        self.pylint_rc = get_setting('pylint_rc', None) or "" #pylint: disable=W0201
+        self.ignore = [t.lower() for t in get_setting('ignore', [])] #pylint: disable=W0201
 
         if not self.pylint_path:
             sublime.error_message("Please define the full path to 'lint.py' in the settings.")
@@ -115,6 +118,33 @@ class PylinterCommand(sublime_plugin.TextCommand):
             PYLINTER_ERRORS[view_id]['visible'] ^= True
         except KeyError:
             pass
+
+    def add_ignore(self):
+        global PYLINTER_ERRORS
+        view_id = self.view.id()
+        point = self.view.sel()[0].end()
+        position = self.view.rowcol(point)
+        current_line = position[0]
+
+        pylint_statement = "#pylint: disable=" #pylint: disable=E0012
+
+        # If an error is registered for that line
+        if PYLINTER_ERRORS[view_id].has_key(current_line):
+            #print position
+            line_region = self.view.line(point)
+            line_txt = self.view.substr(line_region)
+
+            err_code = PYLINTER_ERRORS[view_id][current_line]
+            err_code = err_code[:err_code.find(':')]
+
+            if pylint_statement not in line_txt:
+                line_txt += " " + pylint_statement + err_code
+            else:
+                line_txt += "," + err_code
+
+            edit = self.view.begin_edit()
+            self.view.replace(edit, line_region, line_txt)
+            self.view.end_edit(edit)
 
     def is_enabled(self):
         file_name = self.view.file_name()
@@ -175,8 +205,8 @@ class PylintThread(threading.Thread):
                              cwd=self.working_dir)
         output, dummy = p.communicate()
 
-        lines = [line for line in output.split('\n')]
-        # Call set_timeout to have the error processing done from teh main thread
+        lines = [line for line in output.split('\n')] #pylint: disable=E1103
+        # Call set_timeout to have the error processing done from the main thread
         sublime.set_timeout(lambda: self.process_errors(lines), 100)
 
     def process_errors(self, lines):

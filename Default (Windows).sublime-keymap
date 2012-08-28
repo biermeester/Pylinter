@@ -1,5 +1,6 @@
 [
 	{ "keys": ["ctrl+alt+z"], "command": "pylinter"},
     { "keys": ["ctrl+alt+x"], "command": "pylinter", "args": {"action": "toggle"} },
-    { "keys": ["ctrl+alt+c"], "command": "pylinter", "args": {"action": "list"} }
+    { "keys": ["ctrl+alt+c"], "command": "pylinter", "args": {"action": "list"} },
+    { "keys": ["ctrl+alt+i"], "command": "pylinter", "args": {"action": "ignore"} }
 ]
