@@ -8,6 +8,9 @@ Latest changes
 
 * Added an 'ignore' function, allowing for easy insertion of ``#pylint: disable=``
   statements/comments.
+* Included wuub's error colouring. Either use the included ``MonokaiPylinter.tmTheme``
+  file, or have a look at it to see how you can colour the different erros and
+  warnings.
 
 Introduction
 ============
