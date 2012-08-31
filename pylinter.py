@@ -12,6 +12,7 @@ import subprocess
 import sublime
 import sublime_plugin
 
+
 settings = sublime.load_settings('Pylinter.sublime-settings')
 def get_setting(name, default):
     v = sublime.active_window().active_view().settings().get('pylinter', {}).get(name, None)
@@ -41,6 +42,7 @@ def speak(*msg):
     if PYLINTER_VERBOSE:
         print " - PyLinter: ", " ".join(msg)
 
+# Icons to be used in the margin
 if get_setting('use_icons', True):
     ICONS = {"C": "../Pylinter/icons/convention",
              "E": "../Pylinter/icons/error",
@@ -168,6 +170,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
             return file_name.endswith('.py')
 
 class PylintThread(threading.Thread):
+    """ This class creates a seperate thread to run Pylint in """
     def __init__(self, view, python_bin, python_path, working_dir, pylint_path, pylint_rc, ignore):
         self.view = view
         # Grab the file name here, since view cannot be accessed
