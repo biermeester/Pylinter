@@ -44,18 +44,20 @@ def speak(*msg):
     if PYLINTER_VERBOSE:
         print " - PyLinter: ", " ".join(msg)
 
-# Icons to be used in the margin
-if get_setting('use_icons', False):
-    ICONS = {"C": "../Pylinter/icons/convention",
-             "E": "../Pylinter/icons/error",
-             "F": "../Pylinter/icons/fatal",
-             "I": "../Pylinter/icons/convention",
-             "R": "../Pylinter/icons/refactor",
-             "W": "../Pylinter/icons/warning"}
-else:
-    ICONS = {"C": "dot", "E": "dot", "F": "dot", "I":"dot", "R": "dot", "W": "dot"}
+
 
 def show_errors(view):
+    # Icons to be used in the margin
+    if get_setting('use_icons', False):
+        ICONS = {"C": "../Pylinter/icons/convention",
+                 "E": "../Pylinter/icons/error",
+                 "F": "../Pylinter/icons/fatal",
+                 "I": "../Pylinter/icons/convention",
+                 "R": "../Pylinter/icons/refactor",
+                 "W": "../Pylinter/icons/warning"}
+    else:
+        ICONS = {"C": "dot", "E": "dot", "F": "dot", "I":"dot", "R": "dot", "W": "dot"}
+
     outlines = []
     outlines2 = {"C": [], "E":[], "F": [], "I":[], "R":[], "W":[]}
     for line_num, error in PYLINTER_ERRORS[view.id()].items():

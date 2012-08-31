@@ -17,8 +17,8 @@
     "pylint_rc": "",
     // Set to true to automtically run Pylint on save
     "run_on_save": true,
-    // Set to false to use dot icons
-    "use_icons": true,
+    // Set to true to use graphical error icons
+    "use_icons": false,
     // Ignore Pylint error types. Possible values:
     // "R" : Refactor for a "good practice" metric violation
     // "C" : Convention for coding standard violation
