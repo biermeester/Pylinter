@@ -4,13 +4,15 @@ Pylinter Sublime Text 2 Plugin
 Latest changes
 ==============
 
-**2012-08-29**
+**2012-08-31**
 
 * Added an 'ignore' function, allowing for easy insertion of ``#pylint: disable=``
   statements/comments.
 * Included wuub's error colouring. Either use the included ``MonokaiPylinter.tmTheme``
   file, or have a look at it to see how you can colour the different erros and
   warnings.
+* Added icons for different message types. You can use the previous dot icons by
+  setting the option ``use_icons`` to ``false``.
 
 Introduction
 ============

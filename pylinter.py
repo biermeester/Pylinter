@@ -41,7 +41,15 @@ def speak(*msg):
     if PYLINTER_VERBOSE:
         print " - PyLinter: ", " ".join(msg)
 
-ICONS = {"C": "dot", "E": "dot", "F": "dot", "I":"dot", "R": "dot", "W": "dot"}
+if get_setting('use_icons', True):
+    ICONS = {"C": "../Packages/Pylinter/icons/convention",
+             "E": "../Packages/Pylinter/icons/error",
+             "F": "../Packages/Pylinter/icons/fatal",
+             "I": "../Packages/Pylinter/icons/convention",
+             "R": "../Packages/Pylinter/icons/refactor",
+             "W": "../Packages/Pylinter/icons/warning"}
+else:
+    ICONS = {"C": "dot", "E": "dot", "F": "dot", "I":"dot", "R": "dot", "W": "dot"}
 
 def show_errors(view):
     outlines = []
