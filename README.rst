@@ -65,7 +65,7 @@ module of your Pylint installation!
   * "E" : Error for important programming issues (i.e. most probably bug)
   * "F" : Fatal for errors which prevented further processing
 
-* **use_icons**: Set to ``True`` if you want to display icons instead of dots in
+* **use_icons**: Set to ``true`` if you want to display icons instead of dots in
   the margin.
 
 
