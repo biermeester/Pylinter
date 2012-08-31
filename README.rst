@@ -12,7 +12,7 @@ Latest changes
   file, or have a look at it to see how you can colour the different erros and
   warnings.
 * Added icons for different message types. You can use the previous dot icons by
-  setting the option ``use_icons`` to ``false`` (Icons by [Yusuke Kamiyamane](http://p.yusukekamiyamane.com/)).
+  setting the option ``use_icons`` to ``false`` (Icons by `Yusuke Kamiyamane`_).
 
 Introduction
 ============
@@ -115,3 +115,5 @@ To see a quick list of all the Pylint errors use:
 
 * **OS X**: ``Command+Alt+c``
 * **Linux, Windows**: ``Control+Alt+c``
+
+.. _Yusuke Kamiyamane: http://p.yusukekamiyamane.com/
