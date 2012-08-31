@@ -42,12 +42,12 @@ def speak(*msg):
         print " - PyLinter: ", " ".join(msg)
 
 if get_setting('use_icons', True):
-    ICONS = {"C": "../Packages/Pylinter/icons/convention",
-             "E": "../Packages/Pylinter/icons/error",
-             "F": "../Packages/Pylinter/icons/fatal",
-             "I": "../Packages/Pylinter/icons/convention",
-             "R": "../Packages/Pylinter/icons/refactor",
-             "W": "../Packages/Pylinter/icons/warning"}
+    ICONS = {"C": "../Pylinter/icons/convention",
+             "E": "../Pylinter/icons/error",
+             "F": "../Pylinter/icons/fatal",
+             "I": "../Pylinter/icons/convention",
+             "R": "../Pylinter/icons/refactor",
+             "W": "../Pylinter/icons/warning"}
 else:
     ICONS = {"C": "dot", "E": "dot", "F": "dot", "I":"dot", "R": "dot", "W": "dot"}
 

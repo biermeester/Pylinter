@@ -12,7 +12,7 @@ Latest changes
   file, or have a look at it to see how you can colour the different erros and
   warnings.
 * Added icons for different message types. You can use the previous dot icons by
-  setting the option ``use_icons`` to ``false``.
+  setting the option ``use_icons`` to ``false`` (Icons by [Yusuke Kamiyamane](http://p.yusukekamiyamane.com/)).
 
 Introduction
 ============
