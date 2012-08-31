@@ -15,11 +15,13 @@ import sublime_plugin
 
 settings = sublime.load_settings('Pylinter.sublime-settings')
 def get_setting(name, default):
-    v = sublime.active_window().active_view().settings().get('pylinter', {}).get(name, None)
-    if v != None:
-        return v
-    else:
-        return settings.get(name, default)
+    try:
+        v = sublime.active_window().active_view().settings().get('pylinter', {}).get(name, None)
+        if v != None:
+            return v
+    except AttributeError:
+        pass
+    return settings.get(name, default)
 
 
 # Regular expression to disect Pylint error messages
@@ -43,7 +45,7 @@ def speak(*msg):
         print " - PyLinter: ", " ".join(msg)
 
 # Icons to be used in the margin
-if get_setting('use_icons', True):
+if get_setting('use_icons', False):
     ICONS = {"C": "../Pylinter/icons/convention",
              "E": "../Pylinter/icons/error",
              "F": "../Pylinter/icons/fatal",
