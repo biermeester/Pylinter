@@ -6,13 +6,16 @@ Latest changes
 
 **2012-08-31**
 
+* Added icons for different message types. You can use the previous dot icons by
+  setting the option ``use_icons`` to ``false`` (Icons by `Yusuke Kamiyamane`_).
+
+**2012-08-29**
+
 * Added an 'ignore' function, allowing for easy insertion of ``#pylint: disable=``
   statements/comments.
 * Included wuub's error colouring. Either use the included ``MonokaiPylinter.tmTheme``
   file, or have a look at it to see how you can colour the different erros and
   warnings.
-* Added icons for different message types. You can use the previous dot icons by
-  setting the option ``use_icons`` to ``false`` (Icons by `Yusuke Kamiyamane`_).
 
 Introduction
 ============
@@ -61,6 +64,10 @@ module of your Pylint installation!
   * "W" : Warning for stylistic problems, or minor programming issues
   * "E" : Error for important programming issues (i.e. most probably bug)
   * "F" : Fatal for errors which prevented further processing
+
+* **use_icons**: Set to ``True`` if you want to display icons instead of dots in
+  the margin.
+
 
 Project settings
 ~~~~~~~~~~~~~~~~
