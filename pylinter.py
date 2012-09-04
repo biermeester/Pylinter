@@ -27,20 +27,17 @@ def get_setting(name, default):
 
 def get_path(option, default):
     path = get_setting(option, default)
-    print option, default, path
-    if path is None:
+    if path is None or isinstance(path, basestring):
         return path
-    if isinstance(path, basestring)
-        return path
-    else:
+    elif isinstance(path, dict):
         host = socket.gethostname()
         try:
-            path = param[host]
-            print path
+            path = path[host]
         except KeyError:
-            speak("Host no found: %s" % host)
-            return default
-        return path
+            speak("Host not found: %s" % host)
+        else:
+            return path
+    return default
 
 
 # Regular expression to disect Pylint error messages
