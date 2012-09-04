@@ -5,6 +5,7 @@
     https://github.com/biermeester/Pylinter
 """
 
+import socket
 import os.path
 import re
 import threading
@@ -22,6 +23,21 @@ def get_setting(name, default):
     except AttributeError:
         pass
     return settings.get(name, default)
+
+
+def get_path(option, default):
+    path = get_setting(option, default)
+    if path is None or isinstance(path, basestring):
+        return path
+    elif isinstance(path, dict):
+        host = socket.gethostname()
+        try:
+            path = path[host]
+        except KeyError:
+            speak("Host not found: %s" % host)
+        else:
+            return path
+    return default
 
 
 # Regular expression to disect Pylint error messages
@@ -109,7 +125,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
         self.python_bin = get_setting('python_bin', 'python') #pylint: disable=W0201
         self.python_path = PATH_SEPERATOR.join([str(p) for p in get_setting('python_path', [])])  #pylint: disable=W0201
         self.working_dir = get_setting('working_dir', None) or None #pylint: disable=W0201
-        self.pylint_path = get_setting('pylint_path', None) #pylint: disable=W0201
+        self.pylint_path = get_path('pylint_path', None) #pylint: disable=W0201
         self.pylint_rc = get_setting('pylint_rc', None) or "" #pylint: disable=W0201
         self.ignore = [t.lower() for t in get_setting('ignore', [])] #pylint: disable=W0201
 
