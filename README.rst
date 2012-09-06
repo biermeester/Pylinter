@@ -14,17 +14,15 @@ Latest changes
 
   ``"pylint_path": "<your pylint path>"``
 
-  into something like this
+  into something like this::
 
-  ```
-  "pylint_path": {
-      "#multiconf#": [
-          {"os:windows": "<your windows pylint path"},
-          {"os:linux;host:<host name": "<your linux pylint path"},
-          {"os:linux;host:<other host name": "<your other linux pylint path"}
-      ]
-    }
-  ```
+    "pylint_path": {
+        "#multiconf#": [
+            {"os:windows": "<your windows pylint path"},
+            {"os:linux;host:<host name": "<your linux pylint path"},
+            {"os:linux;host:<other host name": "<your other linux pylint path"}
+        ]
+      }
 
   For more information you can have a look at the following `multiconf_gist`_.
 
