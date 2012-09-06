@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 
-""" PyLinter
+""" PyLinter Sublime Text Plugin
 
-    https://github.com/biermeester/Pylinter
+    This is a Pylint plugin for Sublime Text.
+
+    Copyright R. de Laat, Elit 2011-2012
+
+    For more information, go to https://github.com/biermeester/Pylinter#readme
 """
 
 import os.path
@@ -12,17 +16,7 @@ import subprocess
 import sublime
 import sublime_plugin
 
-
-settings = sublime.load_settings('Pylinter.sublime-settings')
-def get_setting(name, default):
-    try:
-        v = sublime.active_window().active_view().settings().get('pylinter', {}).get(name, None)
-        if v != None:
-            return v
-    except AttributeError:
-        pass
-    return settings.get(name, default)
-
+import multiconf
 
 # Regular expression to disect Pylint error messages
 P_PYLINT_ERROR = re.compile(r"""
@@ -34,52 +28,63 @@ P_PYLINT_ERROR = re.compile(r"""
 
 # To override this, set the 'verbose' setting in the configuration file
 PYLINTER_VERBOSE = False
+# Pylint error cache
 PYLINTER_ERRORS = {}
 
 PATH_SEPERATOR = ';' if os.name == "nt" else ':'
 SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
+
 
 def speak(*msg):
     """ Log messages to the console if VERBOSE is True """
     if PYLINTER_VERBOSE:
         print " - PyLinter: ", " ".join(msg)
 
+class PylSet(object):
+    """ Pylinter Settings class"""
+    settings = sublime.load_settings('Pylinter.sublime-settings')
 
+    @classmethod
+    def _get_settings_obj(cls):
+        try:
+            view_settings = sublime.active_window().active_view().settings()
+            view_settings = view_settings.get('pylinter')
+            if view_settings:
+                return view_settings
+        except AttributeError:
+            pass
+        return cls.settings
 
-def show_errors(view):
-    # Icons to be used in the margin
-    if get_setting('use_icons', False):
-        ICONS = {"C": "../Pylinter/icons/convention",
-                 "E": "../Pylinter/icons/error",
-                 "F": "../Pylinter/icons/fatal",
-                 "I": "../Pylinter/icons/convention",
-                 "R": "../Pylinter/icons/refactor",
-                 "W": "../Pylinter/icons/warning"}
-    else:
-        ICONS = {"C": "dot", "E": "dot", "F": "dot", "I":"dot", "R": "dot", "W": "dot"}
+    @classmethod
+    def get(cls, setting_name):
+        value = cls.get_or(setting_name, None)
+        if value is None:
+            raise PylSetException("No value found for '%s'" % setting_name)
+        return value
 
-    outlines = []
-    outlines2 = {"C": [], "E":[], "F": [], "I":[], "R":[], "W":[]}
-    for line_num, error in PYLINTER_ERRORS[view.id()].items():
-        if not isinstance(line_num, int):
-            continue
-        line = view.line(view.text_point(line_num, 0))
-        outlines2[error[0]].append(line)
-        outlines.append(view.line(view.text_point(line_num, 0)))
-    for key, regions in outlines2.items():
-        view.add_regions('pylinter.' + key, regions, 'pylinter.' + key, ICONS[key], sublime.DRAW_OUTLINED)
+    @classmethod
+    def get_or(cls, setting_name, default):
+        return multiconf.get(cls._get_settings_obj(), setting_name, default)
+
+class PylSetException(Exception):
+    pass
+
 
 class PylinterCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, **kwargs):
 
-        self._read_settings()
+        settings = self._read_settings()
+
+        if not settings:
+            return
 
         action = kwargs.get('action', None)
+
         if action == 'toggle':
             self.toggle_regions()
         elif action == 'list':
-            popup_error_list(self.view)
+            self.popup_error_list()
         elif action == 'dump':
             self.dump_errors()
         elif action == 'ignore':
@@ -88,13 +93,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
             speak("Running Pylinter on %s" % self.view.file_name())
 
             if self.view.file_name().endswith('.py'):
-                thread = PylintThread(self.view,
-                                      self.python_bin,
-                                      self.python_path,
-                                      self.working_dir,
-                                      self.pylint_path,
-                                      self.pylint_rc,
-                                      self.ignore)
+                thread = PylintThread(self.view, *settings)
                 thread.start()
                 self.progress_tracker(thread)
 
@@ -105,21 +104,86 @@ class PylinterCommand(sublime_plugin.TextCommand):
     def _read_settings(self):
         global PYLINTER_VERBOSE
 
-        PYLINTER_VERBOSE = get_setting('verbose', False)
-        self.python_bin = get_setting('python_bin', 'python') #pylint: disable=W0201
-        self.python_path = PATH_SEPERATOR.join([str(p) for p in get_setting('python_path', [])])  #pylint: disable=W0201
-        self.working_dir = get_setting('working_dir', None) or None #pylint: disable=W0201
-        self.pylint_path = get_setting('pylint_path', None) #pylint: disable=W0201
-        self.pylint_rc = get_setting('pylint_rc', None) or "" #pylint: disable=W0201
-        self.ignore = [t.lower() for t in get_setting('ignore', [])] #pylint: disable=W0201
+        PYLINTER_VERBOSE = PylSet.get_or('verbose', False)
 
-        if not self.pylint_path:
-            sublime.error_message("Please define the full path to 'lint.py' in the settings.")
-        elif not os.path.exists(self.pylint_path):
-            sublime.error_message("Pylint not found at '%s'." % self.pylint_path)
+        python_bin = PylSet.get_or('python_bin', 'python')
+        python_path = PylSet.get_or('python_path', [])
+        python_path = PATH_SEPERATOR.join([str(p) for p in python_path])
+        working_dir = PylSet.get_or('working_dir', None)
+        pylint_path = PylSet.get_or('pylint_path', None)
+        pylint_rc = PylSet.get_or('pylint_rc', None) or ""
+        ignore = [t.lower() for t in PylSet.get_or('ignore', [])]
 
-        if self.pylint_rc and not os.path.exists(self.pylint_rc):
-            sublime.error_message("Pylint configuration not found at '%s'." % self.pylint_rc)
+        if not pylint_path:
+            msg = "Please define the full path to 'lint.py' in the settings."
+            sublime.error_message(msg)
+            return False
+        elif not os.path.exists(pylint_path):
+            msg = "Pylint not found at '%s'." % pylint_path
+            sublime.error_message(msg)
+            return False
+
+        if pylint_rc and not os.path.exists(pylint_rc):
+            msg = "Pylint configuration not found at '%s'." % pylint_rc
+            sublime.error_message(msg)
+            return False
+
+        return (python_bin,
+                python_path,
+                working_dir,
+                pylint_path,
+                pylint_rc,
+                ignore)
+
+    @classmethod
+    def show_errors(cls, view):
+        # Icons to be used in the margin
+        if PylSet.get_or('use_icons', False):
+            icons = {"C": "../Pylinter/icons/convention",
+                     "E": "../Pylinter/icons/error",
+                     "F": "../Pylinter/icons/fatal",
+                     "I": "../Pylinter/icons/convention",
+                     "R": "../Pylinter/icons/refactor",
+                     "W": "../Pylinter/icons/warning"}
+        else:
+            icons = {"C": "dot",
+                     "E": "dot",
+                     "F": "dot",
+                     "I":"dot",
+                     "R": "dot",
+                     "W": "dot"}
+
+        outlines = {"C": [], "E":[], "F": [], "I":[], "R":[], "W":[]}
+
+        for line_num, error in PYLINTER_ERRORS[view.id()].items():
+            if not isinstance(line_num, int):
+                continue
+            line = view.line(view.text_point(line_num, 0))
+            outlines[error[0]].append(line)
+
+        for key, regions in outlines.items():
+            view.add_regions('pylinter.' + key, regions, 'pylinter.' + key, icons[key], sublime.DRAW_OUTLINED)
+
+    def popup_error_list(self):
+        view_id = self.view.id()
+
+        if not PYLINTER_ERRORS.has_key(view_id):
+            return
+
+        # No errors were found
+        if len(PYLINTER_ERRORS[view_id]) == 1:
+            sublime.message_dialog("No Pylint errors found")
+            return
+
+        errors = [(key + 1, unicode(value, errors='ignore')) for key, value in PYLINTER_ERRORS[view_id].items() if key != 'visible']
+        line_nums, panel_items = zip(*sorted(errors, key=lambda error: error[1]))
+
+        def on_done(selected_item):
+            if selected_item == -1:
+                return
+            self.view.run_command("goto_line", {"line": line_nums[selected_item]})
+
+        self.view.window().show_quick_panel(list(panel_items), on_done)
 
     def progress_tracker(self, thread, i=0):
         icons = [u"◐", u"◓", u"◑", u"◒"]
@@ -134,21 +198,25 @@ class PylinterCommand(sublime_plugin.TextCommand):
         view_id = self.view.id()
         try:
             if PYLINTER_ERRORS[view_id]['visible']:
-                self.view.erase_regions('pylinter')
+                speak("Hiding errors")
+                for category in ["C", "E", "F", "I", "R", "W"]:
+                    self.view.erase_regions('pylinter.' + category)
             else:
-                show_errors(self.view)
+                speak("Showing errors")
+                self.show_errors(self.view)
             PYLINTER_ERRORS[view_id]['visible'] ^= True
         except KeyError:
             pass
 
     def add_ignore(self):
         global PYLINTER_ERRORS
+
         view_id = self.view.id()
         point = self.view.sel()[0].end()
         position = self.view.rowcol(point)
         current_line = position[0]
 
-        pylint_statement = "#pylint: disable=" #pylint: disable=E0012
+        pylint_statement = "".join(("#", "pyl", "int: ", "disable="))
 
         # If an error is registered for that line
         if PYLINTER_ERRORS[view_id].has_key(current_line):
@@ -175,16 +243,16 @@ class PylinterCommand(sublime_plugin.TextCommand):
 
 class PylintThread(threading.Thread):
     """ This class creates a seperate thread to run Pylint in """
-    def __init__(self, view, python_bin, python_path, working_dir, pylint_path, pylint_rc, ignore):
+    def __init__(self, view, pbin, ppath, cwd, lpath, lrc, ignore):
         self.view = view
         # Grab the file name here, since view cannot be accessed
         # from anywhere but the main application thread
         self.file_name = view.file_name()
-        self.python_bin = python_bin
-        self.python_path = python_path
-        self.working_dir = working_dir
-        self.pylint_path = pylint_path
-        self.pylint_rc = pylint_rc
+        self.python_bin = pbin
+        self.python_path = ppath
+        self.working_dir = cwd
+        self.pylint_path = lpath
+        self.pylint_rc = lrc
         self.ignore = ignore
 
         threading.Thread.__init__(self)
@@ -246,7 +314,7 @@ class PylintThread(threading.Thread):
                     PYLINTER_ERRORS[view_id][line_num] = "%s%s: %s " % (m['type'], m['errno'], m['msg'].strip())
                     speak(PYLINTER_ERRORS[view_id][line_num])
 
-        show_errors(self.view)
+        PylinterCommand.show_errors(self.view)
 
 class BackgroundPylinter(sublime_plugin.EventListener):
     def __init__(self):
@@ -257,7 +325,7 @@ class BackgroundPylinter(sublime_plugin.EventListener):
         return view.rowcol(view.sel()[0].end())[0]
 
     def on_post_save(self, view):
-        if view.file_name().endswith('.py') and get_setting('run_on_save', False):
+        if view.file_name().endswith('.py') and PylSet.get_or('run_on_save', False):
             view.run_command('pylinter')
 
     def on_selection_modified(self, view):
@@ -270,23 +338,3 @@ class BackgroundPylinter(sublime_plugin.EventListener):
                 if PYLINTER_ERRORS[view_id].has_key(self.last_selected_line):
                     sublime.status_message(PYLINTER_ERRORS[view_id][self.last_selected_line])
 
-def popup_error_list(view):
-    view_id = view.id()
-
-    if not PYLINTER_ERRORS.has_key(view_id):
-        return
-
-    # No errors were found
-    if len(PYLINTER_ERRORS[view_id]) == 1:
-        sublime.message_dialog("No Pylint errors found")
-        return
-
-    errors = [(key + 1, unicode(value, errors='ignore')) for key, value in PYLINTER_ERRORS[view_id].items() if key != 'visible']
-    line_nums, panel_items = zip(*sorted(errors, key=lambda error: error[1]))
-
-    def on_done(selected_item):
-        if selected_item == -1:
-            return
-        view.run_command("goto_line", {"line": line_nums[selected_item]})
-
-    view.window().show_quick_panel(list(panel_items), on_done)

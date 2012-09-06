@@ -4,10 +4,17 @@ Pylinter Sublime Text 2 Plugin
 Latest changes
 ==============
 
+**2012-09-06**
+
+* Pylinter now allows for platform and/or host specific configuration to be
+  stored in a single configuration file. This is particulary useful for the
+  ``pylint_path`` setting. For more information you can have a look at the
+  following `gist`_.
+
 **2012-08-31**
 
-* Added icons for different message types. You can use the previous dot icons by
-  setting the option ``use_icons`` to ``false`` (Icons by `Yusuke Kamiyamane`_).
+* Added icons for different message types. You can use these icons by
+  setting the option ``use_icons`` to ``true`` (Icons by `Yusuke Kamiyamane`_).
 
 **2012-08-29**
 
@@ -123,4 +130,5 @@ To see a quick list of all the Pylint errors use:
 * **OS X**: ``Command+Alt+c``
 * **Linux, Windows**: ``Control+Alt+c``
 
+.. _gist: https://gist.github.com/3646966
 .. _Yusuke Kamiyamane: http://p.yusukekamiyamane.com/
