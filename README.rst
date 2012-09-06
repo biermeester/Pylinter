@@ -91,7 +91,7 @@ module of your Pylint installation!
   the margin.
 
 Multiconf
-=========
+~~~~~~~~~
 
 Any setting can be replaced by a Multiconf structure ::
 
