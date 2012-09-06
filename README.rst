@@ -90,6 +90,20 @@ module of your Pylint installation!
 * **use_icons**: Set to ``true`` if you want to display icons instead of dots in
   the margin.
 
+Multiconf
+=========
+
+Any setting can be replaced by a Multiconf structure ::
+
+    "pylint_path": {
+        "#multiconf#": [
+            {"os:windows": "<your windows pylint path>"},
+            {"os:linux;host:<host name": "<your linux pylint path>"},
+            {"os:linux;host:<other host name": "<your other linux pylint path>"}
+        ]
+      }
+
+For more information you can have a look at the following `gist`_.
 
 Project settings
 ~~~~~~~~~~~~~~~~
