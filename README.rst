@@ -8,8 +8,24 @@ Latest changes
 
 * Pylinter now allows for platform and/or host specific configuration to be
   stored in a single configuration file. This is particulary useful for the
-  ``pylint_path`` setting. For more information you can have a look at the
-  following `gist`_.
+  ``pylint_path`` setting.
+
+  Simply change a setting like
+
+  ``"pylint_path": "<your pylint path>"``
+
+  into something like this
+
+  ``"pylint_path": {
+      "#multiconf#": [
+        {"os:windows": "<your windows pylint path"},
+        {"os:linux;host:<host name": "<your linux pylint path"},
+        {"os:linux;host:<other host name": "<your other linux pylint path"}
+      ]
+    }
+  ``
+
+  For more information you can have a look at the following `multiconf_gist`_.
 
 **2012-08-31**
 
@@ -130,5 +146,5 @@ To see a quick list of all the Pylint errors use:
 * **OS X**: ``Command+Alt+c``
 * **Linux, Windows**: ``Control+Alt+c``
 
-.. _gist: https://gist.github.com/3646966
+.. _multiconf_gist: https://gist.github.com/3646966
 .. _Yusuke Kamiyamane: http://p.yusukekamiyamane.com/
