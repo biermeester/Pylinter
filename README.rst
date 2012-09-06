@@ -18,9 +18,9 @@ Latest changes
 
     "pylint_path": {
         "#multiconf#": [
-            {"os:windows": "<your windows pylint path"},
-            {"os:linux;host:<host name": "<your linux pylint path"},
-            {"os:linux;host:<other host name": "<your other linux pylint path"}
+            {"os:windows": "<your windows pylint path>"},
+            {"os:linux;host:<host name": "<your linux pylint path>"},
+            {"os:linux;host:<other host name": "<your other linux pylint path>"}
         ]
       }
 
