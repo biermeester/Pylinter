@@ -24,7 +24,7 @@ Latest changes
         ]
       }
 
-  For more information you can have a look at the following `multiconf_gist`_.
+  For more information you can have a look at the following `gist`_.
 
 **2012-08-31**
 
@@ -145,5 +145,5 @@ To see a quick list of all the Pylint errors use:
 * **OS X**: ``Command+Alt+c``
 * **Linux, Windows**: ``Control+Alt+c``
 
-.. _multiconf_gist: https://gist.github.com/3646966
+.. _gist: https://gist.github.com/3646966
 .. _Yusuke Kamiyamane: http://p.yusukekamiyamane.com/
