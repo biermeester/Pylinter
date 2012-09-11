@@ -4,7 +4,7 @@ Pylinter Sublime Text 2 Plugin
 Latest changes
 ==============
 
-**2012-09-06**
+**2012-09-12**
 
 * Pylinter will now try and automatically find the path to Pylint.
 
