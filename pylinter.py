@@ -18,27 +18,53 @@ import sublime_plugin
 
 import multiconf
 
-# Regular expression to disect Pylint error messages
-P_PYLINT_ERROR = re.compile(r"""
-                            ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
-                            \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number, e.g. E0101
-                            (,\ (?P<hint>.+))?\]\             # optional class or function name
-                            (?P<msg>.*)                       # finally, the error message
-                            """, re.IGNORECASE|re.VERBOSE)
-
 # To override this, set the 'verbose' setting in the configuration file
 PYLINTER_VERBOSE = False
-# Pylint error cache
-PYLINTER_ERRORS = {}
-
-PATH_SEPERATOR = ';' if os.name == "nt" else ':'
-SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
-
 
 def speak(*msg):
     """ Log messages to the console if VERBOSE is True """
     if PYLINTER_VERBOSE:
         print " - PyLinter: ", " ".join(msg)
+
+# Regular expression to disect Pylint error messages
+P_PYLINT_ERROR = re.compile(r"""
+    ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
+    \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number e.g. E0101
+    (,\ (?P<hint>.+))?\]\             # optional class or function name
+    (?P<msg>.*)                       # finally, the error message
+    """, re.IGNORECASE|re.VERBOSE)
+
+# Prevent the console from popping up
+if os.name == "nt":
+    STARTUPINFO = subprocess.STARTUPINFO()
+    STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+else:
+    STARTUPINFO = None
+
+# Try and automatically resolve Pylint's path
+PYLINT_PATH = None
+try:
+    cmd = ["python",
+           "-c",
+           "import pylint; print pylint.__path__[0]"]
+    proc = subprocess.Popen(cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            startupinfo=STARTUPINFO)
+    out, err = proc.communicate()
+
+    if out != "":
+        PYLINT_PATH = os.path.join(out.strip(), #pylint: disable=E1103
+                                   "lint.py")
+except ImportError:
+    pass
+
+
+# Pylint error cache
+PYLINTER_ERRORS = {}
+
+PATH_SEPERATOR = ';' if os.name == "nt" else ':'
+SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
 
 class PylSet(object):
     """ Pylinter Settings class"""
@@ -110,10 +136,11 @@ class PylinterCommand(sublime_plugin.TextCommand):
         python_path = PylSet.get_or('python_path', [])
         python_path = PATH_SEPERATOR.join([str(p) for p in python_path])
         working_dir = PylSet.get_or('working_dir', None)
-        pylint_path = PylSet.get_or('pylint_path', None)
+        pylint_path = PylSet.get_or('pylint_path', None) or PYLINT_PATH
         pylint_rc = PylSet.get_or('pylint_rc', None) or ""
         ignore = [t.lower() for t in PylSet.get_or('ignore', [])]
 
+        print PYLINT_PATH
         if not pylint_path:
             msg = "Please define the full path to 'lint.py' in the settings."
             sublime.error_message(msg)
@@ -268,13 +295,6 @@ class PylintThread(threading.Thread):
         if self.pylint_rc:
             command.insert(-2, '--rcfile=%s' % self.pylint_rc)
 
-        # Prevent the console from popping up
-        if os.name == "nt":
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        else:
-            startupinfo = None
-
         original = os.environ.get('PYTHONPATH', '')
 
         speak("Current PYTHONPATH is '%s'" % original)
@@ -288,11 +308,10 @@ class PylintThread(threading.Thread):
         speak("Updated PYTHONPATH is '%s'" % os.environ['PYTHONPATH'])
 
         speak("Running command:\n    ", " ".join(command))
-
         p = subprocess.Popen(command,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
-                             startupinfo=startupinfo,
+                             startupinfo=STARTUPINFO,
                              cwd=self.working_dir)
         output, dummy = p.communicate()
 

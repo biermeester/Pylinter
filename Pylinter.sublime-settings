@@ -10,11 +10,11 @@
 
                    ],
     // Optionally set the working directory
-    "working_dir": "",
+    "working_dir": null,
     // Full path to the lint.py module in the pylint package
-    "pylint_path": "",
+    "pylint_path": null,
     // Optional full path to a Pylint configuration file
-    "pylint_rc": "",
+    "pylint_rc": null,
     // Set to true to automtically run Pylint on save
     "run_on_save": true,
     // Set to true to use graphical error icons

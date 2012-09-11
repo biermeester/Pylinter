@@ -6,6 +6,10 @@ Latest changes
 
 **2012-09-06**
 
+* Pylinter will now try and automatically find the path to Pylint.
+
+**2012-09-06**
+
 * Pylinter now allows for platform and/or host specific configuration to be
   stored in a single configuration file. This is particulary useful for the
   ``pylint_path`` setting.
@@ -33,11 +37,11 @@ Latest changes
 
 **2012-08-29**
 
-* Added an 'ignore' function, allowing for easy insertion of ``#pylint: disable=``
-  statements/comments.
-* Included wuub's error colouring. Either use the included ``MonokaiPylinter.tmTheme``
-  file, or have a look at it to see how you can colour the different erros and
-  warnings.
+* Added an 'ignore' function, allowing for easy insertion of
+  ``#pylint: disable=`` statements/comments.
+* Included wuub's error colouring. Either use the included
+  ``MonokaiPylinter.tmTheme`` file, or have a look at it to see how you can
+  colour the different erros and warnings.
 
 Introduction
 ============
@@ -45,8 +49,9 @@ Introduction
 This is a small plugin for Sublime Text 2 that allows automatic Python
 source code checking by Pylint.
 
-Since Pylint can take a while before it has completed its task (multiple seconds),
-it is run from a separate thread, so the plugin won't lock up Sublime Text.
+Since Pylint can take a while before it has completed its task (multiple
+seconds), it is run from a separate thread, so the plugin won't lock up Sublime
+Text.
 
 The plugin can be automatically invoked *on save* or by a keyboard shortcut.
 
@@ -59,23 +64,26 @@ Support for Pylint configuration files is included.
 Configuration
 =============
 
-Before the plugin can be used, you *must* provide a full path to the ``lint.py``
-module of your Pylint installation!
+Pylinter will try and determine the path to Pylint. If it fails you *must*
+provide a full path to the ``lint.py`` module of your Pylint installation!
 
-* **python_bin**: The full path to the Python executable you want to use for running
-  Pylint (e.g. when you are using virtualenv) or simply ``python`` if you want to use
-  your default python installation.
+* **python_bin**: The full path to the Python executable you want to use for
+    running   Pylint (e.g. when you are using virtualenv) or simply ``python``
+    if you want to use   your default python installation.
 
-* **python_path**: An optional list of paths that will be added to Pylint's Python path.
+* **python_path**: An optional list of paths that will be added to Pylint's
+    Python path.
 
-* **working_dir**: An optional path to the working directory from which Pylint will be run.
+* **working_dir**: An optional path to the working directory from which Pylint
+    will be run.
 
 * **pylint_path**: The full path to the ``lint.py`` module.
 
-* **pylint_rc**: The full path to the Pylint configuration file you want to use, if any.
+* **pylint_rc**: The full path to the Pylint configuration file you want to use,
+    if any.
 
-* **run_on_save**: If this setting is set to ``true``, Pylint will be invoked each time
-  you save a Python source code file.
+* **run_on_save**: If this setting is set to ``true``, Pylint will be invoked
+    each time you save a Python source code file.
 
 * **ignore**: A list of Pylint error types which you wish to ignore.
 
@@ -108,8 +116,9 @@ For more information you can have a look at the following `gist`_.
 Project settings
 ~~~~~~~~~~~~~~~~
 
-You may also store settings in your *.sublime-project files. Create a ``"pylinter"``
-section as shown below and override any or all of the described settings::
+You may also store settings in your *.sublime-project files. Create a
+``"pylinter"`` section as shown below and override any or all of the described
+settings::
 
     {
         "folders":
