@@ -90,7 +90,10 @@ class PylSet(object):
 
     @classmethod
     def get_or(cls, setting_name, default):
-        return multiconf.get(cls._get_settings_obj(), setting_name, default)
+        settings_obj = cls._get_settings_obj()
+        if not settings_obj.has_key(setting_name):
+            settings_obj = cls.settings
+        return multiconf.get(settings_obj, setting_name, default)
 
 class PylSetException(Exception):
     pass
@@ -131,7 +134,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
         global PYLINTER_VERBOSE
 
         PYLINTER_VERBOSE = PylSet.get_or('verbose', False)
-
+        speak("Verbose is", str(PYLINTER_VERBOSE))
         python_bin = PylSet.get_or('python_bin', 'python')
         python_path = PylSet.get_or('python_path', [])
         python_path = PATH_SEPERATOR.join([str(p) for p in python_path])
@@ -140,7 +143,6 @@ class PylinterCommand(sublime_plugin.TextCommand):
         pylint_rc = PylSet.get_or('pylint_rc', None) or ""
         ignore = [t.lower() for t in PylSet.get_or('ignore', [])]
 
-        print PYLINT_PATH
         if not pylint_path:
             msg = "Please define the full path to 'lint.py' in the settings."
             sublime.error_message(msg)
