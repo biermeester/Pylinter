@@ -13,6 +13,7 @@ import os.path
 import re
 import threading
 import subprocess
+import collections
 import sublime
 import sublime_plugin
 
@@ -20,6 +21,7 @@ import multiconf
 
 # To override this, set the 'verbose' setting in the configuration file
 PYLINTER_VERBOSE = False
+
 
 def speak(*msg):
     """ Log messages to the console if VERBOSE is True """
@@ -29,10 +31,11 @@ def speak(*msg):
 # Regular expression to disect Pylint error messages
 P_PYLINT_ERROR = re.compile(r"""
     ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
-    \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number e.g. E0101
+    \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number
+                                      # e.g. E0101
     (,\ (?P<hint>.+))?\]\             # optional class or function name
     (?P<msg>.*)                       # finally, the error message
-    """, re.IGNORECASE|re.VERBOSE)
+    """, re.IGNORECASE | re.VERBOSE)
 
 # Prevent the console from popping up
 if os.name == "nt":
@@ -54,7 +57,7 @@ try:
     out, err = proc.communicate()
 
     if out != "":
-        PYLINT_PATH = os.path.join(out.strip(), #pylint: disable=E1103
+        PYLINT_PATH = os.path.join(out.strip(),  # pylint: disable=E1103
                                    "lint.py")
 except ImportError:
     pass
@@ -65,6 +68,7 @@ PYLINTER_ERRORS = {}
 
 PATH_SEPERATOR = ';' if os.name == "nt" else ':'
 SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
+
 
 class PylSet(object):
     """ Pylinter Settings class"""
@@ -91,9 +95,12 @@ class PylSet(object):
     @classmethod
     def get_or(cls, setting_name, default):
         settings_obj = cls._get_settings_obj()
-        if not settings_obj.has_key(setting_name):
-            settings_obj = cls.settings
+
+        if isinstance(settings_obj, collections.Iterable):
+            if not setting_name in settings_obj:
+                settings_obj = cls.settings
         return multiconf.get(settings_obj, setting_name, default)
+
 
 class PylSetException(Exception):
     pass
@@ -178,11 +185,11 @@ class PylinterCommand(sublime_plugin.TextCommand):
             icons = {"C": "dot",
                      "E": "dot",
                      "F": "dot",
-                     "I":"dot",
+                     "I": "dot",
                      "R": "dot",
                      "W": "dot"}
 
-        outlines = {"C": [], "E":[], "F": [], "I":[], "R":[], "W":[]}
+        outlines = {"C": [], "E": [], "F": [], "I": [], "R": [], "W": []}
 
         for line_num, error in PYLINTER_ERRORS[view.id()].items():
             if not isinstance(line_num, int):
@@ -191,12 +198,14 @@ class PylinterCommand(sublime_plugin.TextCommand):
             outlines[error[0]].append(line)
 
         for key, regions in outlines.items():
-            view.add_regions('pylinter.' + key, regions, 'pylinter.' + key, icons[key], sublime.DRAW_OUTLINED)
+            view.add_regions('pylinter.' + key, regions,
+                             'pylinter.' + key, icons[key],
+                             sublime.DRAW_OUTLINED)
 
     def popup_error_list(self):
         view_id = self.view.id()
 
-        if not PYLINTER_ERRORS.has_key(view_id):
+        if not view_id in PYLINTER_ERRORS:
             return
 
         # No errors were found
@@ -204,13 +213,17 @@ class PylinterCommand(sublime_plugin.TextCommand):
             sublime.message_dialog("No Pylint errors found")
             return
 
-        errors = [(key + 1, unicode(value, errors='ignore')) for key, value in PYLINTER_ERRORS[view_id].items() if key != 'visible']
-        line_nums, panel_items = zip(*sorted(errors, key=lambda error: error[1]))
+        errors = [(key + 1, unicode(value, errors='ignore'))
+                  for key, value in PYLINTER_ERRORS[view_id].items()
+                  if key != 'visible']
+        line_nums, panel_items = zip(*sorted(errors,
+                                             key=lambda error: error[1]))
 
         def on_done(selected_item):
             if selected_item == -1:
                 return
-            self.view.run_command("goto_line", {"line": line_nums[selected_item]})
+            self.view.run_command("goto_line",
+                                  {"line": line_nums[selected_item]})
 
         self.view.window().show_quick_panel(list(panel_items), on_done)
 
@@ -248,7 +261,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
         pylint_statement = "".join(("#", "pyl", "int: ", "disable="))
 
         # If an error is registered for that line
-        if PYLINTER_ERRORS[view_id].has_key(current_line):
+        if current_line in PYLINTER_ERRORS[view_id]:
             #print position
             line_region = self.view.line(point)
             line_txt = self.view.substr(line_region)
@@ -269,6 +282,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
         file_name = self.view.file_name()
         if file_name:
             return file_name.endswith('.py')
+
 
 class PylintThread(threading.Thread):
     """ This class creates a seperate thread to run Pylint in """
@@ -302,7 +316,8 @@ class PylintThread(threading.Thread):
         speak("Current PYTHONPATH is '%s'" % original)
 
         org_path_lst = [p for p in re.split(SEPERATOR_PATTERN, original) if p]
-        pyl_path_lst = [p for p in re.split(SEPERATOR_PATTERN, self.python_path) if p]
+        pyl_path_lst = [p for p in re.split(SEPERATOR_PATTERN,
+                                            self.python_path) if p]
 
         pythonpaths = set(org_path_lst + pyl_path_lst)
 
@@ -317,8 +332,9 @@ class PylintThread(threading.Thread):
                              cwd=self.working_dir)
         output, dummy = p.communicate()
 
-        lines = [line for line in output.split('\n')] #pylint: disable=E1103
-        # Call set_timeout to have the error processing done from the main thread
+        lines = [line for line in output.split('\n')]  # pylint: disable=E1103
+        # Call set_timeout to have the error processing done
+        # from the main thread
         sublime.set_timeout(lambda: self.process_errors(lines), 100)
 
     def process_errors(self, lines):
@@ -332,10 +348,13 @@ class PylintThread(threading.Thread):
                 m = mdic.groupdict()
                 line_num = int(m['line']) - 1
                 if m['type'].lower() not in self.ignore:
-                    PYLINTER_ERRORS[view_id][line_num] = "%s%s: %s " % (m['type'], m['errno'], m['msg'].strip())
+                    PYLINTER_ERRORS[view_id][line_num] =\
+                        "%s%s: %s " % (m['type'], m['errno'],
+                        m['msg'].strip())
                     speak(PYLINTER_ERRORS[view_id][line_num])
 
         PylinterCommand.show_errors(self.view)
+
 
 class BackgroundPylinter(sublime_plugin.EventListener):
     def __init__(self):
@@ -346,16 +365,17 @@ class BackgroundPylinter(sublime_plugin.EventListener):
         return view.rowcol(view.sel()[0].end())[0]
 
     def on_post_save(self, view):
-        if view.file_name().endswith('.py') and PylSet.get_or('run_on_save', False):
+        if view.file_name().endswith('.py') and PylSet.get_or('run_on_save',
+                                                              False):
             view.run_command('pylinter')
 
     def on_selection_modified(self, view):
         view_id = view.id()
-        if PYLINTER_ERRORS.has_key(view_id):
+        if view_id in PYLINTER_ERRORS:
             last_selected_line = self._last_selected_lineno(view)
 
             if last_selected_line != self.last_selected_line:
                 self.last_selected_line = last_selected_line
-                if PYLINTER_ERRORS[view_id].has_key(self.last_selected_line):
-                    sublime.status_message(PYLINTER_ERRORS[view_id][self.last_selected_line])
-
+                if self.last_selected_line in PYLINTER_ERRORS[view_id]:
+                    sublime.status_message(PYLINTER_ERRORS[view_id]
+                                           [self.last_selected_line])
