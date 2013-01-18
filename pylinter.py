@@ -189,6 +189,11 @@ class PylinterCommand(sublime_plugin.TextCommand):
                      "R": "dot",
                      "W": "dot"}
 
+        if PylSet.get_or('disable_outline', False):
+            region_flag = sublime.HIDDEN
+        else:
+            region_flag = sublime.DRAW_OUTLINED
+
         outlines = {"C": [], "E": [], "F": [], "I": [], "R": [], "W": []}
 
         for line_num, error in PYLINTER_ERRORS[view.id()].items():
@@ -200,7 +205,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
         for key, regions in outlines.items():
             view.add_regions('pylinter.' + key, regions,
                              'pylinter.' + key, icons[key],
-                             sublime.DRAW_OUTLINED)
+                             region_flag)
 
     def popup_error_list(self):
         view_id = self.view.id()
