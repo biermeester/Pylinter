@@ -360,6 +360,7 @@ class BackgroundPylinter(sublime_plugin.EventListener):
     def __init__(self):
         sublime_plugin.EventListener.__init__(self)
         self.last_selected_line = -1
+        self.status_active = False
 
     def _last_selected_lineno(self, view):
         return view.rowcol(view.sel()[0].end())[0]
@@ -377,5 +378,9 @@ class BackgroundPylinter(sublime_plugin.EventListener):
             if last_selected_line != self.last_selected_line:
                 self.last_selected_line = last_selected_line
                 if self.last_selected_line in PYLINTER_ERRORS[view_id]:
-                    sublime.status_message(PYLINTER_ERRORS[view_id]
-                                           [self.last_selected_line])
+                    view.set_status('Pylinter', PYLINTER_ERRORS[view_id]
+                                               [self.last_selected_line])
+                    self.status_active = True
+                elif self.status_active:
+                    view.erase_status('Pylinter')
+                    self.status_active = False
