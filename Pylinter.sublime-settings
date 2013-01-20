@@ -25,5 +25,7 @@
     // "W" : Warning for stylistic problems, or minor programming issues
     // "E" : Error for important programming issues (i.e. most probably bug)
     // "F" : Fatal for errors which prevented further processing
-    "ignore": []
+    "ignore": [],
+    // a comma separated string of individual errors to disable
+    "disable": null
 }
