@@ -19,8 +19,9 @@
     "run_on_save": true,
     // Set to true to use graphical error icons
     "use_icons": false,
-    // Do not outline offending lines
     "disable_outline": false,
+    // Status messages stay as long as cursor is on an error line
+    "message_stay": false,
     // Ignore Pylint error types. Possible values:
     // "R" : Refactor for a "good practice" metric violation
     // "C" : Convention for coding standard violation
@@ -31,4 +32,3 @@
     // a list of strings of individual errors to disable, ex: ["C0301"]
     "disable": []
 }
-
