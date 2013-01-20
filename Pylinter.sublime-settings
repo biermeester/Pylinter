@@ -19,6 +19,8 @@
     "run_on_save": true,
     // Set to true to use graphical error icons
     "use_icons": false,
+    // Do not outline offending lines
+    "disable_outline": false,
     // Ignore Pylint error types. Possible values:
     // "R" : Refactor for a "good practice" metric violation
     // "C" : Convention for coding standard violation
