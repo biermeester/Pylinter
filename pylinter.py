@@ -337,17 +337,23 @@ class PylintThread(threading.Thread):
                              stderr=subprocess.PIPE,
                              startupinfo=STARTUPINFO,
                              cwd=self.working_dir)
-        output, dummy = p.communicate()
+        output, eoutput = p.communicate()
 
         lines = [line for line in output.split('\n')]  # pylint: disable=E1103
+        elines = [line for line in eoutput.split('\n')]  # pylint:disable=E1103
         # Call set_timeout to have the error processing done
         # from the main thread
-        sublime.set_timeout(lambda: self.process_errors(lines), 100)
+        sublime.set_timeout(lambda: self.process_errors(lines, elines), 100)
 
-    def process_errors(self, lines):
+    def process_errors(self, lines, errlines):
         view_id = self.view.id()
         global PYLINTER_ERRORS
         PYLINTER_ERRORS[view_id] = {"visible": True}
+
+        # if pylint raised any exceptions, propogate those to the user, for
+        # instance, trying to disable a messaage id that does not exist
+        if len(errlines) > 1:
+            sublime.error_message("Fatal pylint error:\n%s" % (errlines[-2]))
 
         for line in lines:
             mdic = re.match(P_PYLINT_ERROR, line)
