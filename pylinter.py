@@ -357,7 +357,7 @@ class PylintThread(threading.Thread):
 
         # if pylint raised any exceptions, propogate those to the user, for
         # instance, trying to disable a messaage id that does not exist
-        if len(errlines) > 1:
+        if len(errlines) > 2 and "raise" in errlines[-3]:
             sublime.error_message("Fatal pylint error:\n%s" % (errlines[-2]))
 
         for line in lines:
