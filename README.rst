@@ -4,6 +4,17 @@ Pylinter Sublime Text 2 Plugin
 Latest changes
 ==============
 
+**2013-01-20**
+
+Thanks to KristoforMaynard for the following additions:
+
+* When the ``message_stay`` setting is set to ``true``, the error messages will
+  be displayed as long as the cursor stays on the offending line.
+* The ``disable_outline`` setting can be set to ``true`` to hide the outlines of
+  errors.
+* The ``disable`` setting can be assigned a list or errors to ignore. E.g.
+  ["C0301", "E1011"]
+
 **2012-09-12**
 
 * Pylinter will now try and automatically find the path to Pylint.
