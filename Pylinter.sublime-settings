@@ -26,6 +26,6 @@
     // "E" : Error for important programming issues (i.e. most probably bug)
     // "F" : Fatal for errors which prevented further processing
     "ignore": [],
-    // a comma separated string of individual errors to disable
-    "disable": null
+    // a list of strings of individual errors to disable, ex: ["C0301"]
+    "disable": []
 }

@@ -149,7 +149,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
         pylint_path = PylSet.get_or('pylint_path', None) or PYLINT_PATH
         pylint_rc = PylSet.get_or('pylint_rc', None) or ""
         ignore = [t.lower() for t in PylSet.get_or('ignore', [])]
-        disable_msgs = PylSet.get_or('disable', None) or ""
+        disable_msgs = ",".join(PylSet.get_or('disable', []))
 
         if not pylint_path:
             msg = "Please define the full path to 'lint.py' in the settings."
