@@ -4,7 +4,7 @@
 
     This is a Pylint plugin for Sublime Text.
 
-    Copyright R. de Laat, Elit 2011-2012
+    Copyright R. de Laat, Elit 2011-2013
 
     For more information, go to https://github.com/biermeester/Pylinter#readme
 """
@@ -149,6 +149,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
         pylint_path = PylSet.get_or('pylint_path', None) or PYLINT_PATH
         pylint_rc = PylSet.get_or('pylint_rc', None) or ""
         ignore = [t.lower() for t in PylSet.get_or('ignore', [])]
+        disable_msgs = ",".join(PylSet.get_or('disable', []))
 
         if not pylint_path:
             msg = "Please define the full path to 'lint.py' in the settings."
@@ -169,7 +170,8 @@ class PylinterCommand(sublime_plugin.TextCommand):
                 working_dir,
                 pylint_path,
                 pylint_rc,
-                ignore)
+                ignore,
+                disable_msgs)
 
     @classmethod
     def show_errors(cls, view):
@@ -291,7 +293,8 @@ class PylinterCommand(sublime_plugin.TextCommand):
 
 class PylintThread(threading.Thread):
     """ This class creates a seperate thread to run Pylint in """
-    def __init__(self, view, pbin, ppath, cwd, lpath, lrc, ignore):
+    def __init__(self, view, pbin, ppath, cwd, lpath, lrc, ignore,
+                 disable_msgs):
         self.view = view
         # Grab the file name here, since view cannot be accessed
         # from anywhere but the main application thread
@@ -302,6 +305,7 @@ class PylintThread(threading.Thread):
         self.pylint_path = lpath
         self.pylint_rc = lrc
         self.ignore = ignore
+        self.disable_msgs = disable_msgs
 
         threading.Thread.__init__(self)
 
@@ -315,6 +319,9 @@ class PylintThread(threading.Thread):
 
         if self.pylint_rc:
             command.insert(-2, '--rcfile=%s' % self.pylint_rc)
+
+        if self.disable_msgs:
+            command.insert(-2, '--disable=%s' % self.disable_msgs)
 
         original = os.environ.get('PYTHONPATH', '')
 
@@ -335,17 +342,23 @@ class PylintThread(threading.Thread):
                              stderr=subprocess.PIPE,
                              startupinfo=STARTUPINFO,
                              cwd=self.working_dir)
-        output, dummy = p.communicate()
+        output, eoutput = p.communicate()
 
         lines = [line for line in output.split('\n')]  # pylint: disable=E1103
+        elines = [line for line in eoutput.split('\n')]  # pylint:disable=E1103
         # Call set_timeout to have the error processing done
         # from the main thread
-        sublime.set_timeout(lambda: self.process_errors(lines), 100)
+        sublime.set_timeout(lambda: self.process_errors(lines, elines), 100)
 
-    def process_errors(self, lines):
+    def process_errors(self, lines, errlines):
         view_id = self.view.id()
         global PYLINTER_ERRORS
         PYLINTER_ERRORS[view_id] = {"visible": True}
+
+        # if pylint raised any exceptions, propogate those to the user, for
+        # instance, trying to disable a messaage id that does not exist
+        if len(errlines) > 1:
+            sublime.error_message("Fatal pylint error:\n%s" % (errlines[-2]))
 
         for line in lines:
             mdic = re.match(P_PYLINT_ERROR, line)
