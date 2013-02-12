@@ -22,6 +22,8 @@ import multiconf
 # To override this, set the 'verbose' setting in the configuration file
 PYLINTER_VERBOSE = False
 
+# the tag associated with view.set_status messages
+PYLINTER_STATUS_TAG = "Pylinter"
 
 def speak(*msg):
     """ Log messages to the console if VERBOSE is True """
@@ -129,6 +131,8 @@ class PylinterCommand(sublime_plugin.TextCommand):
             speak("Running Pylinter on %s" % self.view.file_name())
 
             if self.view.file_name().endswith('.py'):
+                # erase status message if sitting on an error line
+                self.view.erase_status(PYLINTER_STATUS_TAG)
                 thread = PylintThread(self.view, *settings)
                 thread.start()
                 self.progress_tracker(thread)
@@ -208,6 +212,15 @@ class PylinterCommand(sublime_plugin.TextCommand):
             view.add_regions('pylinter.' + key, regions,
                              'pylinter.' + key, icons[key],
                              region_flag)
+
+        # set status message if command finished on an error line
+        if PylSet.get_or("message_stay", False):
+            view_id = view.id()
+            lineno = view.rowcol(view.sel()[0].end())[0]
+            if lineno in PYLINTER_ERRORS[view_id]:
+                err_str = PYLINTER_ERRORS[view_id][lineno]
+                view.set_status(PYLINTER_STATUS_TAG, err_str)
+
 
     def popup_error_list(self):
         view_id = self.view.id()
@@ -379,7 +392,6 @@ class BackgroundPylinter(sublime_plugin.EventListener):
         sublime_plugin.EventListener.__init__(self)
         self.last_selected_line = -1
         self.message_stay = PylSet.get_or("message_stay", False)
-        self.status_active = False
 
     def _last_selected_lineno(self, view):
         return view.rowcol(view.sel()[0].end())[0]
@@ -399,10 +411,9 @@ class BackgroundPylinter(sublime_plugin.EventListener):
                 if self.last_selected_line in PYLINTER_ERRORS[view_id]:
                     err_str = PYLINTER_ERRORS[view_id][self.last_selected_line]
                     if self.message_stay:
-                        view.set_status('Pylinter', err_str)
-                        self.status_active = True
+                        view.set_status(PYLINTER_STATUS_TAG, err_str)
                     else:
                         sublime.status_message(err_str)
-                elif self.status_active:
-                    view.erase_status('Pylinter')
-                    self.status_active = False
+                # if no longer on an error line, but there is a status, erase it
+                elif view.get_status(PYLINTER_STATUS_TAG):
+                    view.erase_status(PYLINTER_STATUS_TAG)
