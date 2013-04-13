@@ -9,6 +9,7 @@
     For more information, go to https://github.com/biermeester/Pylinter#readme
 """
 
+from __future__ import print_function
 import os.path
 import re
 import threading
@@ -17,7 +18,10 @@ import collections
 import sublime
 import sublime_plugin
 
-import multiconf
+try:
+    import multiconf  # ST2
+except ImportError:
+    from . import multiconf  # ST3
 
 # To override this, set the 'verbose' setting in the configuration file
 PYLINTER_VERBOSE = False
@@ -28,7 +32,7 @@ PYLINTER_STATUS_TAG = "Pylinter"
 def speak(*msg):
     """ Log messages to the console if VERBOSE is True """
     if PYLINTER_VERBOSE:
-        print " - PyLinter: ", " ".join(msg)
+        print(" - PyLinter: ", " ".join(msg))
 
 # Regular expression to disect Pylint error messages
 P_PYLINT_ERROR = re.compile(r"""
@@ -58,6 +62,7 @@ try:
                             startupinfo=STARTUPINFO)
     out, err = proc.communicate()
 
+    out = out.decode()
     if out != "":
         PYLINT_PATH = os.path.join(out.strip(),  # pylint: disable=E1103
                                    "lint.py")
@@ -126,7 +131,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
         elif action == 'dump':
             self.dump_errors()
         elif action == 'ignore':
-            self.add_ignore()
+            self.add_ignore(edit)
         else:
             speak("Running Pylinter on %s" % self.view.file_name())
 
@@ -270,19 +275,15 @@ class PylinterCommand(sublime_plugin.TextCommand):
         except KeyError:
             pass
 
-    def add_ignore(self):
-        global PYLINTER_ERRORS
-
+    def add_ignore(self, edit):
         view_id = self.view.id()
         point = self.view.sel()[0].end()
         position = self.view.rowcol(point)
         current_line = position[0]
 
-        pylint_statement = "".join(("#", "pyl", "int: ", "disable="))
-
         # If an error is registered for that line
         if current_line in PYLINTER_ERRORS[view_id]:
-            #print position
+            pylint_statement = "".join(("#", "pyl", "int: ", "disable="))
             line_region = self.view.line(point)
             line_txt = self.view.substr(line_region)
 
@@ -294,9 +295,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
             else:
                 line_txt += "," + err_code
 
-            edit = self.view.begin_edit()
             self.view.replace(edit, line_region, line_txt)
-            self.view.end_edit(edit)
 
     def is_enabled(self):
         file_name = self.view.file_name()
@@ -357,6 +356,8 @@ class PylintThread(threading.Thread):
                              cwd=self.working_dir)
         output, eoutput = p.communicate()
 
+        output = output.decode()
+        eoutput = eoutput.decode()
         lines = [line for line in output.split('\n')]  # pylint: disable=E1103
         elines = [line for line in eoutput.split('\n')]  # pylint:disable=E1103
         # Call set_timeout to have the error processing done
