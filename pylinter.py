@@ -19,9 +19,11 @@ import sublime
 import sublime_plugin
 
 try:
-    import multiconf  # ST2
+    import multiconf  # ST 2
+    ST_VERSION = 2
 except ImportError:
     from . import multiconf  # ST3
+    ST_VERSION = 3
 
 # To override this, set the 'verbose' setting in the configuration file
 PYLINTER_VERBOSE = False
@@ -62,9 +64,8 @@ try:
                             startupinfo=STARTUPINFO)
     out, err = proc.communicate()
 
-    out = out.decode()
     if out != "":
-        PYLINT_PATH = os.path.join(out.strip(),  # pylint: disable=E1103
+        PYLINT_PATH = os.path.join(out.decode().strip(),
                                    "lint.py")
 except ImportError:
     pass
@@ -96,7 +97,8 @@ class PylSet(object):
     def get(cls, setting_name):
         value = cls.get_or(setting_name, None)
         if value is None:
-            raise PylSetException("No value found for '%s'" % setting_name)
+            raise PylSetException(
+                        "No value found for '{0}'".format(setting_name))
         return value
 
     @classmethod
@@ -133,7 +135,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
         elif action == 'ignore':
             self.add_ignore(edit)
         else:
-            speak("Running Pylinter on %s" % self.view.file_name())
+            speak("Running Pylinter on {0}".format(self.view.file_name()))
 
             if self.view.file_name().endswith('.py'):
                 # erase status message if sitting on an error line
@@ -153,7 +155,8 @@ class PylinterCommand(sublime_plugin.TextCommand):
         speak("Verbose is", str(PYLINTER_VERBOSE))
         python_bin = PylSet.get_or('python_bin', 'python')
         python_path = PylSet.get_or('python_path', [])
-        python_path = PATH_SEPERATOR.join([str(p) for p in python_path])
+        if python_path is not None:
+            python_path = PATH_SEPERATOR.join([str(p) for p in python_path])
         working_dir = PylSet.get_or('working_dir', None)
         pylint_path = PylSet.get_or('pylint_path', None) or PYLINT_PATH
         pylint_rc = PylSet.get_or('pylint_rc', None) or ""
@@ -165,12 +168,12 @@ class PylinterCommand(sublime_plugin.TextCommand):
             sublime.error_message(msg)
             return False
         elif not os.path.exists(pylint_path):
-            msg = "Pylint not found at '%s'." % pylint_path
+            msg = "Pylint not found at '{0}'.".format(pylint_path)
             sublime.error_message(msg)
             return False
 
         if pylint_rc and not os.path.exists(pylint_rc):
-            msg = "Pylint configuration not found at '%s'." % pylint_rc
+            msg = "Pylint configuration not found at '{0}'.".format(pylint_rc)
             sublime.error_message(msg)
             return False
 
@@ -186,12 +189,20 @@ class PylinterCommand(sublime_plugin.TextCommand):
     def show_errors(cls, view):
         # Icons to be used in the margin
         if PylSet.get_or('use_icons', False):
-            icons = {"C": "../Pylinter/icons/convention",
-                     "E": "../Pylinter/icons/error",
-                     "F": "../Pylinter/icons/fatal",
-                     "I": "../Pylinter/icons/convention",
-                     "R": "../Pylinter/icons/refactor",
-                     "W": "../Pylinter/icons/warning"}
+            if ST_VERSION == 2:
+                icons = {"C": "../Pylinter/icons/convention",
+                         "E": "../Pylinter/icons/error",
+                         "F": "../Pylinter/icons/fatal",
+                         "I": "../Pylinter/icons/convention",
+                         "R": "../Pylinter/icons/refactor",
+                         "W": "../Pylinter/icons/warning"}
+            else:
+                icons = {"C": "Packages/Pylinter/icons/convention.png",
+                         "E": "Packages/Pylinter/icons/error.png",
+                         "F": "Packages/Pylinter/icons/fatal.png",
+                         "I": "Packages/Pylinter/icons/convention.png",
+                         "R": "Packages/Pylinter/icons/refactor.png",
+                         "W": "Packages/Pylinter/icons/warning.png"}           
         else:
             icons = {"C": "dot",
                      "E": "dot",
@@ -254,7 +265,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
 
     def progress_tracker(self, thread, i=0):
         icons = [u"◐", u"◓", u"◑", u"◒"]
-        sublime.status_message("PyLinting %s" % icons[i])
+        sublime.status_message(u"PyLinting {0}".format(icons[i]))
         if thread.is_alive():
             i = (i + 1) % 4
             sublime.set_timeout(lambda: self.progress_tracker(thread, i), 100)
@@ -330,14 +341,14 @@ class PylintThread(threading.Thread):
                    self.file_name]
 
         if self.pylint_rc:
-            command.insert(-2, '--rcfile=%s' % self.pylint_rc)
+            command.insert(-2, '--rcfile={0}'.format(self.pylint_rc))
 
         if self.disable_msgs:
-            command.insert(-2, '--disable=%s' % self.disable_msgs)
+            command.insert(-2, '--disable={0}'.format(self.disable_msgs))
 
         original = os.environ.get('PYTHONPATH', '')
 
-        speak("Current PYTHONPATH is '%s'" % original)
+        speak("Current PYTHONPATH is '{0}'".format(original))
 
         org_path_lst = [p for p in re.split(SEPERATOR_PATTERN, original) if p]
         pyl_path_lst = [p for p in re.split(SEPERATOR_PATTERN,
@@ -346,7 +357,7 @@ class PylintThread(threading.Thread):
         pythonpaths = set(org_path_lst + pyl_path_lst)
 
         os.environ['PYTHONPATH'] = PATH_SEPERATOR.join(pythonpaths)
-        speak("Updated PYTHONPATH is '%s'" % os.environ['PYTHONPATH'])
+        speak("Updated PYTHONPATH is '{0}'".format(os.environ['PYTHONPATH']))
 
         speak("Running command:\n    ", " ".join(command))
         p = subprocess.Popen(command,
@@ -356,10 +367,8 @@ class PylintThread(threading.Thread):
                              cwd=self.working_dir)
         output, eoutput = p.communicate()
 
-        output = output.decode()
-        eoutput = eoutput.decode()
-        lines = [line for line in output.split('\n')]  # pylint: disable=E1103
-        elines = [line for line in eoutput.split('\n')]  # pylint:disable=E1103
+        lines = [line for line in output.decode().split('\n')]  
+        elines = [line for line in eoutput.decode().split('\n')]
         # Call set_timeout to have the error processing done
         # from the main thread
         sublime.set_timeout(lambda: self.process_errors(lines, elines), 100)
@@ -372,7 +381,8 @@ class PylintThread(threading.Thread):
         # if pylint raised any exceptions, propogate those to the user, for
         # instance, trying to disable a messaage id that does not exist
         if len(errlines) > 2 and "raise" in errlines[-3]:
-            sublime.error_message("Fatal pylint error:\n%s" % (errlines[-2]))
+            sublime.error_message("Fatal pylint error:\n"
+                                  "{0}".format((errlines[-2])))
 
         for line in lines:
             mdic = re.match(P_PYLINT_ERROR, line)
@@ -380,9 +390,9 @@ class PylintThread(threading.Thread):
                 m = mdic.groupdict()
                 line_num = int(m['line']) - 1
                 if m['type'].lower() not in self.ignore:
-                    PYLINTER_ERRORS[view_id][line_num] =\
-                        "%s%s: %s " % (m['type'], m['errno'],
-                        m['msg'].strip())
+                    PYLINTER_ERRORS[view_id][line_num] = \
+                        "{0}{1}: {2} ".format(m['type'], m['errno'],
+                                              m['msg'].strip())
                     speak(PYLINTER_ERRORS[view_id][line_num])
 
         PylinterCommand.show_errors(self.view)
