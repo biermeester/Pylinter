@@ -91,6 +91,12 @@ class PylSet(object):
                 return view_settings
         except AttributeError:
             pass
+
+        # ST3 hack since in st3, sublime.* will quietly do nothing in the module
+        # init... so while cls.settings is not None, it contains no real info...
+        # if ST3 then check if the settings are actually loaded before returning
+        if ST_VERSION == 3 and cls.settings.settings_id == 0:
+            cls.settings = sublime.load_settings('Pylinter.sublime-settings')
         return cls.settings
 
     @classmethod
