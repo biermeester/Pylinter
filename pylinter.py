@@ -10,6 +10,7 @@
 """
 
 from __future__ import print_function
+import sys
 import os.path
 import re
 import threading
@@ -237,9 +238,14 @@ class PylinterCommand(sublime_plugin.TextCommand):
             sublime.message_dialog("No Pylint errors found")
             return
 
-        errors = [(key + 1, unicode(value, errors='ignore'))
-                  for key, value in PYLINTER_ERRORS[view_id].items()
-                  if key != 'visible']
+        if sys.version_info >= (3,):
+            errors = [(key + 1, str(value))
+                      for key, value in PYLINTER_ERRORS[view_id].items()
+                      if key != 'visible']
+        else:
+            errors = [(key + 1, unicode(value, errors="ignore"))
+                      for key, value in PYLINTER_ERRORS[view_id].items()
+                      if key != 'visible']            
         line_nums, panel_items = zip(*sorted(errors,
                                              key=lambda error: error[1]))
 
