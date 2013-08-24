@@ -19,26 +19,15 @@ import sublime_plugin
 
 import multiconf
 
+#pylint: disable=E1101
+
 # To override this, set the 'verbose' setting in the configuration file
 PYLINTER_VERBOSE = False
-
-# the tag associated with view.set_status messages
-PYLINTER_STATUS_TAG = "Pylinter"
 
 def speak(*msg):
     """ Log messages to the console if VERBOSE is True """
     if PYLINTER_VERBOSE:
         print " - PyLinter: ", " ".join(msg)
-
-# The output format we want PyLint's error messages to be in
-PYLINT_FORMAT = '--msg-template={path}:{line}:{msg_id}:{msg}'
-
-# Regular expression to disect Pylint error messages
-P_PYLINT_ERROR = re.compile(r"""
-    ^(?P<file>.+?):(?P<line>[0-9]+): # file name and line number
-    (?P<type>[a-z])(?P<errno>\d+):   # message type and error number, e.g. E0101
-    (?P<msg>.*)                      # finally, the error message
-    """, re.IGNORECASE | re.VERBOSE)
 
 # Prevent the console from popping up
 if os.name == "nt":
@@ -49,6 +38,9 @@ else:
 
 # Try and automatically resolve Pylint's path
 PYLINT_PATH = None
+# Since Pylint 1.0.0 differs from earlier version, we need to find out which one
+# we have.
+PYLINT_VERSION =  (1, 0, 0)
 try:
     cmd = ["python",
            "-c",
@@ -62,16 +54,47 @@ try:
     if out != "":
         PYLINT_PATH = os.path.join(out.strip(),  # pylint: disable=E1103
                                    "lint.py")
+
+        cmd = ["python",
+               "-c",
+               "from pylint.__pkginfo__ import numversion; print numversion"]
+
+        proc = subprocess.Popen(cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            startupinfo=STARTUPINFO)
+        out, err = proc.communicate()
+        PYLINT_VERSION = tuple(int(n) for n in re.findall("[0-9]+", out))
+
 except ImportError:
     pass
 
+# Regular expression to disect Pylint error messages
+if PYLINT_VERSION[0] == 0:
+    # Regular expression to disect Pylint error messages
+    P_PYLINT_ERROR = re.compile(r"""
+        ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
+        \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number
+                                          # e.g. E0101
+        (,\ (?P<hint>.+))?\]\             # optional class or function name
+        (?P<msg>.*)                       # finally, the error message
+        """, re.IGNORECASE | re.VERBOSE)
+else:
+    P_PYLINT_ERROR = re.compile(r"""
+        ^(?P<file>.+?):(?P<line>[0-9]+): # file name and line number
+        (?P<type>[a-z])(?P<errno>\d+):   # message type and error number,
+                                         # e.g. E0101
+        (?P<msg>.*)                      # finally, the error message
+        """, re.IGNORECASE | re.VERBOSE)
+
+# The output format we want PyLint's error messages to be in
+PYLINT_FORMAT = '--msg-template={path}:{line}:{msg_id}:{msg}'
 
 # Pylint error cache
 PYLINTER_ERRORS = {}
 
 PATH_SEPERATOR = ';' if os.name == "nt" else ':'
 SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
-
 
 class PylSet(object):
     """ Pylinter Settings class"""
@@ -132,8 +155,6 @@ class PylinterCommand(sublime_plugin.TextCommand):
             speak("Running Pylinter on %s" % self.view.file_name())
 
             if self.view.file_name().endswith('.py'):
-                # erase status message if sitting on an error line
-                self.view.erase_status(PYLINTER_STATUS_TAG)
                 thread = PylintThread(self.view, *settings)
                 thread.start()
                 self.progress_tracker(thread)
@@ -154,7 +175,11 @@ class PylinterCommand(sublime_plugin.TextCommand):
         pylint_path = PylSet.get_or('pylint_path', None) or PYLINT_PATH
         pylint_rc = PylSet.get_or('pylint_rc', None) or ""
         ignore = [t.lower() for t in PylSet.get_or('ignore', [])]
-        disable_msgs = ",".join(PylSet.get_or('disable', []))
+
+        # Added ignore for trailing whitespace (false positives bug in pylint)
+        disable = PylSet.get_or('disable', [])
+        disable.append('C0303')
+        disable_msgs = ",".join(disable)
 
         if not pylint_path:
             msg = "Please define the full path to 'lint.py' in the settings."
@@ -213,15 +238,6 @@ class PylinterCommand(sublime_plugin.TextCommand):
             view.add_regions('pylinter.' + key, regions,
                              'pylinter.' + key, icons[key],
                              region_flag)
-
-        # set status message if command finished on an error line
-        if PylSet.get_or("message_stay", False):
-            view_id = view.id()
-            lineno = view.rowcol(view.sel()[0].end())[0]
-            if lineno in PYLINTER_ERRORS[view_id]:
-                err_str = PYLINTER_ERRORS[view_id][lineno]
-                view.set_status(PYLINTER_STATUS_TAG, err_str)
-
 
     def popup_error_list(self):
         view_id = self.view.id()
@@ -324,12 +340,18 @@ class PylintThread(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-
-        command = [self.python_bin,
-                   self.pylint_path,
-                   '--reports=n',
-                   PYLINT_FORMAT,
-                   self.file_name]
+        if PYLINT_VERSION[0] == 0:
+            command = [self.python_bin,
+                       self.pylint_path,
+                       '--output-format=parseable',
+                       '--include-ids=y',
+                       self.file_name]
+        else:
+            command = [self.python_bin,
+                       self.pylint_path,
+                       '--reports=n',
+                       PYLINT_FORMAT,
+                       self.file_name]
 
         if self.pylint_rc:
             command.insert(-2, '--rcfile=%s' % self.pylint_rc)
@@ -358,6 +380,8 @@ class PylintThread(threading.Thread):
                              cwd=self.working_dir)
         output, eoutput = p.communicate()
 
+        print output
+
         lines = [line for line in output.split('\n')]  # pylint: disable=E1103
         elines = [line for line in eoutput.split('\n')]  # pylint:disable=E1103
         # Call set_timeout to have the error processing done
@@ -371,7 +395,7 @@ class PylintThread(threading.Thread):
 
         # if pylint raised any exceptions, propogate those to the user, for
         # instance, trying to disable a messaage id that does not exist
-        if len(errlines) > 2 and "raise" in errlines[-3]:
+        if len(errlines) > 1:
             sublime.error_message("Fatal pylint error:\n%s" % (errlines[-2]))
 
         for line in lines:
@@ -380,10 +404,13 @@ class PylintThread(threading.Thread):
                 m = mdic.groupdict()
                 line_num = int(m['line']) - 1
                 if m['type'].lower() not in self.ignore:
-                    PYLINTER_ERRORS[view_id][line_num] =\
+                    PYLINTER_ERRORS[view_id][line_num] = \
                         "%s%s: %s " % (m['type'], m['errno'],
                         m['msg'].strip())
                     speak(PYLINTER_ERRORS[view_id][line_num])
+
+        if len(PYLINTER_ERRORS[view_id]) <= 1:
+            speak("No errors found")
 
         PylinterCommand.show_errors(self.view)
 
@@ -393,6 +420,7 @@ class BackgroundPylinter(sublime_plugin.EventListener):
         sublime_plugin.EventListener.__init__(self)
         self.last_selected_line = -1
         self.message_stay = PylSet.get_or("message_stay", False)
+        self.status_active = False
 
     def _last_selected_lineno(self, view):
         return view.rowcol(view.sel()[0].end())[0]
@@ -412,9 +440,10 @@ class BackgroundPylinter(sublime_plugin.EventListener):
                 if self.last_selected_line in PYLINTER_ERRORS[view_id]:
                     err_str = PYLINTER_ERRORS[view_id][self.last_selected_line]
                     if self.message_stay:
-                        view.set_status(PYLINTER_STATUS_TAG, err_str)
+                        view.set_status('Pylinter', err_str)
+                        self.status_active = True
                     else:
                         sublime.status_message(err_str)
-                # if no longer on an error line, but there is a status, erase it
-                elif view.get_status(PYLINTER_STATUS_TAG):
-                    view.erase_status(PYLINTER_STATUS_TAG)
+                elif self.status_active:
+                    view.erase_status('Pylinter')
+                    self.status_active = False

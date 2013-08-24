@@ -4,6 +4,13 @@ Pylinter Sublime Text 2 Plugin
 Latest changes
 ==============
 
+**2013-08-24**
+
+Thanks to dbader for the Pylint 1.0 support
+
+* Pylinter now automatically detects what version of Pylint is used and is both
+compatible with the new 1.0.0 version and the older ones.
+
 **2013-01-20**
 
 Thanks to KristoforMaynard for the following additions:
