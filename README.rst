@@ -9,7 +9,7 @@ Latest changes
 Thanks to dbader for the Pylint 1.0 support
 
 * Pylinter now automatically detects what version of Pylint is used and is both
-compatible with the new 1.0.0 version and the older ones.
+  compatible with the new 1.0.0 version and the older ones.
 
 **2013-01-20**
 
