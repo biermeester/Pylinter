@@ -30,13 +30,14 @@ def speak(*msg):
     if PYLINTER_VERBOSE:
         print " - PyLinter: ", " ".join(msg)
 
+# The output format we want PyLint's error messages to be in
+PYLINT_FORMAT = '--msg-template={path}:{line}:{msg_id}:{msg}'
+
 # Regular expression to disect Pylint error messages
 P_PYLINT_ERROR = re.compile(r"""
-    ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
-    \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number
-                                      # e.g. E0101
-    (,\ (?P<hint>.+))?\]\             # optional class or function name
-    (?P<msg>.*)                       # finally, the error message
+    ^(?P<file>.+?):(?P<line>[0-9]+): # file name and line number
+    (?P<type>[a-z])(?P<errno>\d+):   # message type and error number, e.g. E0101
+    (?P<msg>.*)                      # finally, the error message
     """, re.IGNORECASE | re.VERBOSE)
 
 # Prevent the console from popping up
@@ -326,8 +327,8 @@ class PylintThread(threading.Thread):
 
         command = [self.python_bin,
                    self.pylint_path,
-                   '--output-format=parseable',
-                   '--include-ids=y',
+                   '--reports=n',
+                   PYLINT_FORMAT,
                    self.file_name]
 
         if self.pylint_rc:
