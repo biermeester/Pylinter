@@ -4,6 +4,13 @@ Pylinter Sublime Text 2 Plugin
 Latest changes
 ==============
 
+**2013-09-01**
+
+This is the first version of Pylinter that is both compatible with Sublime
+Text 2 and 3. Please feel free to report any issues. And many thank-yous to
+everyone reporting issues and supplying solutions in regards to Python 3
+compatibility.
+
 **2013-08-24**
 
 Thanks to dbader for the Pylint 1.0 support
