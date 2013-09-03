@@ -181,6 +181,9 @@ class PylinterCommand(sublime_plugin.TextCommand):
         pylint_rc = PylSet.get_or('pylint_rc', None) or ""
         ignore = [t.lower() for t in PylSet.get_or('ignore', [])]
 
+        # Add custom runtime settings
+        pylint_extra = PylSet.get_or('pylint_extra', None)
+
         # Added ignore for trailing whitespace (false positives bug in pylint)
         disable = PylSet.get_or('disable', [])
         disable.append('C0303')
@@ -206,7 +209,8 @@ class PylinterCommand(sublime_plugin.TextCommand):
                 pylint_path,
                 pylint_rc,
                 ignore,
-                disable_msgs)
+                disable_msgs,
+                pylint_extra)
 
     @classmethod
     def show_errors(cls, view):
@@ -337,7 +341,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
 class PylintThread(threading.Thread):
     """ This class creates a seperate thread to run Pylint in """
     def __init__(self, view, pbin, ppath, cwd, lpath, lrc, ignore,
-                 disable_msgs):
+                 disable_msgs, extra_pylint_args):
         self.view = view
         # Grab the file name here, since view cannot be accessed
         # from anywhere but the main application thread
@@ -349,6 +353,7 @@ class PylintThread(threading.Thread):
         self.pylint_rc = lrc
         self.ignore = ignore
         self.disable_msgs = disable_msgs
+        self.extra_pylint_args = extra_pylint_args
 
         threading.Thread.__init__(self)
 
@@ -371,6 +376,9 @@ class PylintThread(threading.Thread):
 
         if self.disable_msgs:
             command.insert(-2, '--disable=%s' % self.disable_msgs)
+
+        if self.extra_pylint_args:
+            command.insert(-2, self.extra_pylint_args)
 
         original = os.environ.get('PYTHONPATH', '')
 
