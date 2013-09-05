@@ -86,6 +86,9 @@ class PylSet(object):
         pylint_rc = cls.get_or('pylint_rc', None) or ""
         ignore = [t.lower() for t in cls.get_or('ignore', [])]
 
+        # Add custom runtime settings
+        pylint_extra = PylSet.get_or('pylint_extra', None)
+
         disable = cls.get_or('disable', [])
         # Added ignore for trailing whitespace (false positives bug in
         # pylint 1.0.0)
@@ -104,7 +107,8 @@ class PylSet(object):
                 pylint_path,
                 pylint_rc,
                 ignore,
-                disable_msgs)
+                disable_msgs,
+                pylint_extra)
 
     @classmethod
     def get_lint_path(cls):
