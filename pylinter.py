@@ -41,66 +41,6 @@ if os.name == "nt":
 else:
     STARTUPINFO = None
 
-# Try and automatically resolve Pylint's path
-PYLINT_PATH = None
-# Since Pylint 1.0.0 differs from earlier version, we need to find out which one
-# we have.
-PYLINT_VERSION =  (1, 0, 0)
-try:
-    cmd = ["python",
-           "-c",
-           "import pylint; print pylint.__path__[0]"]
-    proc = subprocess.Popen(cmd,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            startupinfo=STARTUPINFO)
-    out, err = proc.communicate()
-
-    if out != "":
-        PYLINT_PATH = os.path.join(out.strip(),  # pylint: disable=E1103
-                                   b"lint.py").decode("utf-8")
-
-        cmd = ["python",
-               "-c",
-               "from pylint.__pkginfo__ import numversion; print numversion"]
-
-        proc = subprocess.Popen(cmd,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            startupinfo=STARTUPINFO)
-        out, err = proc.communicate()
-        PYLINT_VERSION = tuple(int(n) for n in re.findall(b"[0-9]+", out))
-
-except ImportError:
-    pass
-
-# Regular expression to disect Pylint error messages
-if PYLINT_VERSION[0] == 0:
-    # Regular expression to disect Pylint error messages
-    P_PYLINT_ERROR = re.compile(r"""
-        ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
-        \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number
-                                          # e.g. E0101
-        (,\ (?P<hint>.+))?\]\             # optional class or function name
-        (?P<msg>.*)                       # finally, the error message
-        """, re.IGNORECASE | re.VERBOSE)
-else:
-    P_PYLINT_ERROR = re.compile(r"""
-        ^(?P<file>.+?):(?P<line>[0-9]+): # file name and line number
-        (?P<type>[a-z])(?P<errno>\d+):   # message type and error number,
-                                         # e.g. E0101
-        (?P<msg>.*)                      # finally, the error message
-        """, re.IGNORECASE | re.VERBOSE)
-
-# The output format we want PyLint's error messages to be in
-PYLINT_FORMAT = '--msg-template={path}:{line}:{msg_id}:{msg}'
-
-# Pylint error cache
-PYLINTER_ERRORS = {}
-
-PATH_SEPERATOR = ';' if os.name == "nt" else ':'
-SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
-
 class PylSet(object):
     """ Pylinter Settings class"""
     settings = sublime.load_settings('Pylinter.sublime-settings')
@@ -132,16 +72,116 @@ class PylSet(object):
                 settings_obj = cls.settings
         return multiconf.get(settings_obj, setting_name, default)
 
+    @classmethod
+    def read_settings(cls):
+        global PYLINTER_VERBOSE
+
+        PYLINTER_VERBOSE = cls.get_or('verbose', False)
+        speak("Verbose is", str(PYLINTER_VERBOSE))
+        python_bin = cls.get_or('python_bin', 'python')
+        python_path = cls.get_or('python_path', [])
+        python_path = PATH_SEPERATOR.join([str(p) for p in python_path])
+        working_dir = cls.get_or('working_dir', None)
+        pylint_path = cls.get_lint_path()
+        pylint_rc = cls.get_or('pylint_rc', None) or ""
+        ignore = [t.lower() for t in cls.get_or('ignore', [])]
+
+        disable = cls.get_or('disable', [])
+        # Added ignore for trailing whitespace (false positives bug in
+        # pylint 1.0.0)
+        if PYLINT_VERSION[0] != 0:
+            disable.append('C0303')
+        disable_msgs = ",".join(disable)
+
+        if pylint_rc and not os.path.exists(pylint_rc):
+            msg = "Pylint configuration not found at '%s'." % pylint_rc
+            sublime.error_message(msg)
+            return False
+
+        return (python_bin,
+                python_path,
+                working_dir,
+                pylint_path,
+                pylint_rc,
+                ignore,
+                disable_msgs)
+
+    @classmethod
+    def get_lint_path(cls):
+        pylint_path = PylSet.get_or('pylint_path', None)
+
+        if not pylint_path:
+            cmd = ["python",
+                   "-c",
+                   "import pylint; print pylint.__path__[0]"]
+            proc = subprocess.Popen(cmd,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    startupinfo=STARTUPINFO)
+            out, _ = proc.communicate()
+
+            if out != "":
+                pylint_path = os.path.join(out.strip(),
+                                           b"lint.py").decode("utf-8")
+
+        if not pylint_path:
+            msg = "Please define the full path to 'lint.py' in the settings."
+            sublime.error_message(msg)
+        elif not os.path.exists(pylint_path):
+            msg = "Pylint not found at '{0}'.".format(pylint_path)
+            sublime.error_message(msg)
+        else:
+            speak("Pylint path {0} found".format(pylint_path))
+            return pylint_path
+
+    @classmethod
+    def get_lint_version(cls):
+        import imp
+        pp = os.path.join(
+                os.path.dirname(PylSet.get_lint_path()),
+                '__pkginfo__.py')
+        lintpackage = imp.load_source('lint', pp)
+        speak("Pylint version {0} found".format(lintpackage.numversion))
+        return lintpackage.numversion
 
 class PylSetException(Exception):
     pass
+
+PYLINT_VERSION = PylSet.get_lint_version()
+
+# Regular expression to disect Pylint error messages
+if PYLINT_VERSION[0] == 0:
+    # Regular expression to disect Pylint error messages
+    P_PYLINT_ERROR = re.compile(r"""
+        ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
+        \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number
+                                          # e.g. E0101
+        (,\ (?P<hint>.+))?\]\             # optional class or function name
+        (?P<msg>.*)                       # finally, the error message
+        """, re.IGNORECASE | re.VERBOSE)
+else:
+    P_PYLINT_ERROR = re.compile(r"""
+        ^(?P<file>.+?):(?P<line>[0-9]+): # file name and line number
+        (?P<type>[a-z])(?P<errno>\d+):   # message type and error number,
+                                         # e.g. E0101
+        (?P<msg>.*)                      # finally, the error message
+        """, re.IGNORECASE | re.VERBOSE)
+
+# The output format we want PyLint's error messages to be in
+PYLINT_FORMAT = '--msg-template={path}:{line}:{msg_id}:{msg}'
+
+# Pylint error cache
+PYLINTER_ERRORS = {}
+
+PATH_SEPERATOR = ';' if os.name == "nt" else ':'
+SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
 
 
 class PylinterCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, **kwargs):
 
-        settings = self._read_settings()
+        settings = PylSet.read_settings()
 
         if not settings:
             return
@@ -167,46 +207,6 @@ class PylinterCommand(sublime_plugin.TextCommand):
     def dump_errors(self):
         import pprint
         pprint.pprint(PYLINTER_ERRORS)
-
-    def _read_settings(self):
-        global PYLINTER_VERBOSE
-
-        PYLINTER_VERBOSE = PylSet.get_or('verbose', False)
-        speak("Verbose is", str(PYLINTER_VERBOSE))
-        python_bin = PylSet.get_or('python_bin', 'python')
-        python_path = PylSet.get_or('python_path', [])
-        python_path = PATH_SEPERATOR.join([str(p) for p in python_path])
-        working_dir = PylSet.get_or('working_dir', None)
-        pylint_path = PylSet.get_or('pylint_path', None) or PYLINT_PATH
-        pylint_rc = PylSet.get_or('pylint_rc', None) or ""
-        ignore = [t.lower() for t in PylSet.get_or('ignore', [])]
-
-        # Added ignore for trailing whitespace (false positives bug in pylint)
-        disable = PylSet.get_or('disable', [])
-        disable.append('C0303')
-        disable_msgs = ",".join(disable)
-
-        if not pylint_path:
-            msg = "Please define the full path to 'lint.py' in the settings."
-            sublime.error_message(msg)
-            return False
-        elif not os.path.exists(pylint_path):
-            msg = "Pylint not found at '%s'." % pylint_path
-            sublime.error_message(msg)
-            return False
-
-        if pylint_rc and not os.path.exists(pylint_rc):
-            msg = "Pylint configuration not found at '%s'." % pylint_rc
-            sublime.error_message(msg)
-            return False
-
-        return (python_bin,
-                python_path,
-                working_dir,
-                pylint_path,
-                pylint_rc,
-                ignore,
-                disable_msgs)
 
     @classmethod
     def show_errors(cls, view):
@@ -332,6 +332,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
         file_name = self.view.file_name()
         if file_name:
             return file_name.endswith('.py')
+        return False
 
 
 class PylintThread(threading.Thread):
@@ -372,18 +373,7 @@ class PylintThread(threading.Thread):
         if self.disable_msgs:
             command.insert(-2, '--disable=%s' % self.disable_msgs)
 
-        original = os.environ.get('PYTHONPATH', '')
-
-        speak("Current PYTHONPATH is '%s'" % original)
-
-        org_path_lst = [p for p in re.split(SEPERATOR_PATTERN, original) if p]
-        pyl_path_lst = [p for p in re.split(SEPERATOR_PATTERN,
-                                            self.python_path) if p]
-
-        pythonpaths = set(org_path_lst + pyl_path_lst)
-
-        os.environ['PYTHONPATH'] = PATH_SEPERATOR.join(pythonpaths)
-        speak("Updated PYTHONPATH is '{0}'".format(os.environ['PYTHONPATH']))
+        self.set_path()
 
         speak("Running command")
         speak(" ".join(command))
@@ -400,6 +390,21 @@ class PylintThread(threading.Thread):
         # Call set_timeout to have the error processing done
         # from the main thread
         sublime.set_timeout(lambda: self.process_errors(lines, elines), 100)
+
+    def set_path(self):
+        original = os.environ.get('PYTHONPATH', '')
+
+        speak("Current PYTHONPATH is '%s'" % original)
+
+        org_path_lst = [p for p in re.split(SEPERATOR_PATTERN, original) if p]
+        pyl_path_lst = [p for p in re.split(SEPERATOR_PATTERN,
+                                            self.python_path) if p]
+
+        pythonpaths = set(org_path_lst + pyl_path_lst)
+        os.environ['PYTHONPATH'] = PATH_SEPERATOR.join(pythonpaths)
+
+        speak("Updated PYTHONPATH is '{0}'".format(os.environ['PYTHONPATH']))
+
 
     def process_errors(self, lines, errlines):
         view_id = self.view.id()
