@@ -17,7 +17,7 @@ Support for Pylint configuration files is included.
 
 **Note**::
 
-    **Pylint needs to be installed separately!!!**
+    ** Pylint needs to be installed separately!!! **
 
 Latest changes
 ==============
