@@ -1,4 +1,4 @@
-Pylinter Sublime Text 2 Plugin
+Pylinter Sublime Text 2/3 Plugin
 ------------------------------
 
 Introduction
@@ -17,7 +17,7 @@ Support for Pylint configuration files is included.
 
 **Note**::
 
-    Pylint needs to be installed separately!
+    **Pylint needs to be installed separately!!!**
 
 Latest changes
 ==============
