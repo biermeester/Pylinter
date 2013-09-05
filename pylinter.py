@@ -338,7 +338,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
 class PylintThread(threading.Thread):
     """ This class creates a seperate thread to run Pylint in """
     def __init__(self, view, pbin, ppath, cwd, lpath, lrc, ignore,
-                 disable_msgs):
+                 disable_msgs, extra_pylint_args):
         self.view = view
         # Grab the file name here, since view cannot be accessed
         # from anywhere but the main application thread
@@ -350,6 +350,7 @@ class PylintThread(threading.Thread):
         self.pylint_rc = lrc
         self.ignore = ignore
         self.disable_msgs = disable_msgs
+        self.extra_pylint_args = extra_pylint_args
 
         threading.Thread.__init__(self)
 
