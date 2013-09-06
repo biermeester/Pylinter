@@ -10,6 +10,7 @@
 """
 
 import os.path
+import sys
 import re
 import threading
 import subprocess
@@ -23,6 +24,8 @@ if ST3:
     from . import multiconf
 else:
     import multiconf
+
+py_version = sys.version_info[0]
 
 #pylint: disable=E1101
 
@@ -116,8 +119,11 @@ class PylSet(object):
 
         if not pylint_path:
             cmd = ["python",
-                   "-c",
-                   "import pylint; print pylint.__path__[0]"]
+                   "-c"]
+            if py_version == 2:
+                cmd.append("import pylint; print pylint.__path__[0]")
+            else:
+                cmd.append("import pylint; print(pylint.__path__[0])")
             proc = subprocess.Popen(cmd,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE,
