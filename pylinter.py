@@ -44,10 +44,10 @@ if os.name == "nt":
 else:
     STARTUPINFO = None
 
+pylint_settings = sublime.load_settings('Pylinter.sublime-settings')
+
 class PylSet(object):
     """ Pylinter Settings class"""
-    settings = sublime.load_settings('Pylinter.sublime-settings')
-
     @classmethod
     def _get_settings_obj(cls):
         try:
@@ -57,7 +57,8 @@ class PylSet(object):
                 return view_settings
         except AttributeError:
             pass
-        return cls.settings
+
+        return pylint_settings
 
     @classmethod
     def get(cls, setting_name):
@@ -72,7 +73,7 @@ class PylSet(object):
 
         if isinstance(settings_obj, collections.Iterable):
             if not setting_name in settings_obj:
-                settings_obj = cls.settings
+                settings_obj = pylint_settings
         return multiconf.get(settings_obj, setting_name, default)
 
     @classmethod
@@ -185,7 +186,6 @@ PYLINTER_ERRORS = {}
 
 PATH_SEPERATOR = ';' if os.name == "nt" else ':'
 SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
-
 
 class PylinterCommand(sublime_plugin.TextCommand):
 
@@ -479,3 +479,7 @@ class BackgroundPylinter(sublime_plugin.EventListener):
                 elif self.status_active:
                     view.erase_status('Pylinter')
                     self.status_active = False
+
+def plugin_loaded():
+    global pylint_settings
+    pylint_settings = sublime.load_settings('Pylinter.sublime-settings')
