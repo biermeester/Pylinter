@@ -18,6 +18,9 @@ import collections
 import sublime
 import sublime_plugin
 
+#pylint: disable=E1101
+
+# Constant to differentiate between ST2 and ST3
 ST3 = int(sublime.version()) > 3000
 
 if ST3:
@@ -25,9 +28,8 @@ if ST3:
 else:
     import multiconf
 
-py_version = sys.version_info[0]
-
-#pylint: disable=E1101
+# The version of Python that SublimeText is using
+PYTHON_VERSION = sys.version_info[0]
 
 # To override this, set the 'verbose' setting in the configuration file
 PYLINTER_VERBOSE = False
@@ -37,7 +39,7 @@ def speak(*msg):
     if PYLINTER_VERBOSE:
         print(" - PyLinter: " + " ".join(msg))
 
-# Prevent the console from popping up
+# Prevent the console from popping up in Windows
 if os.name == "nt":
     STARTUPINFO = subprocess.STARTUPINFO()
     STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
@@ -45,6 +47,7 @@ else:
     STARTUPINFO = None
 
 pylint_settings = sublime.load_settings('Pylinter.sublime-settings')
+speak(["kaas", pylint_settings.get("verbose")])
 
 class PylSet(object):
     """ Pylinter Settings class"""
@@ -121,7 +124,7 @@ class PylSet(object):
         if not pylint_path:
             cmd = ["python",
                    "-c"]
-            if py_version == 2:
+            if PYTHON_VERSION == 2:
                 cmd.append("import pylint; print pylint.__path__[0]")
             else:
                 cmd.append("import pylint; print(pylint.__path__[0])")
@@ -148,12 +151,13 @@ class PylSet(object):
     @classmethod
     def get_lint_version(cls):
         import imp
-        pp = os.path.join(
-                os.path.dirname(PylSet.get_lint_path()),
-                '__pkginfo__.py')
-        lintpackage = imp.load_source('lint', pp)
-        speak("Pylint version {0} found".format(lintpackage.numversion))
-        return lintpackage.numversion
+        plp = PylSet.get_lint_path()
+        if plp is not None:
+            pp = os.path.join(os.path.dirname(plp, '__pkginfo__.py'))
+            lintpackage = imp.load_source('lint', pp)
+            speak("Pylint version {0} found".format(lintpackage.numversion))
+            return lintpackage.numversion
+        return (0,)
 
 class PylSetException(Exception):
     pass
