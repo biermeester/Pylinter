@@ -153,7 +153,7 @@ class PylSet(object):
         import imp
         plp = PylSet.get_lint_path()
         if plp is not None:
-            pp = os.path.join(os.path.dirname(plp, '__pkginfo__.py'))
+            pp = os.path.join(os.path.dirname(plp), '__pkginfo__.py')
             lintpackage = imp.load_source('lint', pp)
             speak("Pylint version {0} found".format(lintpackage.numversion))
             return lintpackage.numversion
@@ -165,6 +165,7 @@ class PylSetException(Exception):
 PYLINT_VERSION = PylSet.get_lint_version()
 
 # Regular expression to disect Pylint error messages
+# Pylint version < 1.0
 if PYLINT_VERSION[0] == 0:
     # Regular expression to disect Pylint error messages
     P_PYLINT_ERROR = re.compile(r"""
@@ -174,6 +175,7 @@ if PYLINT_VERSION[0] == 0:
         (,\ (?P<hint>.+))?\]\             # optional class or function name
         (?P<msg>.*)                       # finally, the error message
         """, re.IGNORECASE | re.VERBOSE)
+# Pylint version 1.0 or greater
 else:
     P_PYLINT_ERROR = re.compile(r"""
         ^(?P<file>.+?):(?P<line>[0-9]+): # file name and line number
