@@ -33,7 +33,7 @@ py_version = sys.version_info[0]
 PYLINTER_VERBOSE = False
 
 def speak(*msg):
-    """ Log messages to the console if VERBOSE is True """
+    """ Log messages to the console if PYLINTER_VERBOSE is True """
     if PYLINTER_VERBOSE:
         print(" - PyLinter: " + " ".join(msg))
 
