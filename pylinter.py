@@ -76,7 +76,6 @@ class PylSet(object):
     @classmethod
     def get_or(cls, setting_name, default):
         settings_obj = cls._get_settings_obj()
-
         if isinstance(settings_obj, collections.Iterable):
             if not setting_name in settings_obj:
                 settings_obj = PYLINT_SETTINGS
@@ -178,7 +177,6 @@ SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
 def setPylinterGlobals():
     global P_PYLINT_ERROR
     global PYLINT_VERSION
-    print("Setting Pylinter Globals")
     if LOADED:
         PYLINT_VERSION = PylSet.get_lint_version()
         # Regular expression to disect Pylint error messages
@@ -448,6 +446,9 @@ class PylintThread(threading.Thread):
             err = errlines[-2]
             if not err.startswith("No config file found"):
                 sublime.error_message("Fatal pylint error:\n%s" % (errlines[-2]))
+        # Guard against uninitialised globals
+        if P_PYLINT_ERROR is None:
+            setPylinterGlobals()
 
         for line in lines:
             mdic = re.match(P_PYLINT_ERROR, line)
@@ -465,39 +466,44 @@ class PylintThread(threading.Thread):
 
         PylinterCommand.show_errors(self.view)
 
-if LOADED:
-    class BackgroundPylinter(sublime_plugin.EventListener):
-        def __init__(self):
-            sublime_plugin.EventListener.__init__(self)
-            self.last_selected_line = -1
+
+class BackgroundPylinter(sublime_plugin.EventListener):
+    def __init__(self):
+        sublime_plugin.EventListener.__init__(self)
+        self.last_selected_line = -1
+        # self.message_stay = PylSet.get_or("message_stay", False)
+        self.message_stay = None;
+        self.status_active = False
+
+    def _last_selected_lineno(self, view):
+        return view.rowcol(view.sel()[0].end())[0]
+
+    def on_post_save(self, view):
+        # "Lazy" initialisation to guard against
+        # unprepared global settings
+        if self.message_stay is None:
             self.message_stay = PylSet.get_or("message_stay", False)
-            self.status_active = False
+        if view.file_name().endswith('.py') and PylSet.get_or('run_on_save',
+                                                              False):
+            view.run_command('pylinter')
 
-        def _last_selected_lineno(self, view):
-            return view.rowcol(view.sel()[0].end())[0]
+    def on_selection_modified(self, view):
+        view_id = view.id()
+        if view_id in PYLINTER_ERRORS:
+            last_selected_line = self._last_selected_lineno(view)
 
-        def on_post_save(self, view):
-            if view.file_name().endswith('.py') and PylSet.get_or('run_on_save',
-                                                                  False):
-                view.run_command('pylinter')
-
-        def on_selection_modified(self, view):
-            view_id = view.id()
-            if view_id in PYLINTER_ERRORS:
-                last_selected_line = self._last_selected_lineno(view)
-
-                if last_selected_line != self.last_selected_line:
-                    self.last_selected_line = last_selected_line
-                    if self.last_selected_line in PYLINTER_ERRORS[view_id]:
-                        err_str = PYLINTER_ERRORS[view_id][self.last_selected_line]
-                        if self.message_stay:
-                            view.set_status('Pylinter', err_str)
-                            self.status_active = True
-                        else:
-                            sublime.status_message(err_str)
-                    elif self.status_active:
-                        view.erase_status('Pylinter')
-                        self.status_active = False
+            if last_selected_line != self.last_selected_line:
+                self.last_selected_line = last_selected_line
+                if self.last_selected_line in PYLINTER_ERRORS[view_id]:
+                    err_str = PYLINTER_ERRORS[view_id][self.last_selected_line]
+                    if self.message_stay:
+                        view.set_status('Pylinter', err_str)
+                        self.status_active = True
+                    else:
+                        sublime.status_message(err_str)
+                elif self.status_active:
+                    view.erase_status('Pylinter')
+                    self.status_active = False
 
 def plugin_loaded():
     """Load the settings file when the Sublime API is ready"""
