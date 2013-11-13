@@ -25,12 +25,15 @@ if ST3:
 else:
     import multiconf
 
-py_version = sys.version_info[0]
+PY_VERSION = sys.version_info[0]
 
 #pylint: disable=E1101
 
 # To override this, set the 'verbose' setting in the configuration file
 PYLINTER_VERBOSE = False
+
+# Flag to check whether settings are loaded.
+LOADED = False
 
 def speak(*msg):
     """ Log messages to the console if VERBOSE is True """
@@ -44,7 +47,10 @@ if os.name == "nt":
 else:
     STARTUPINFO = None
 
-pylint_settings = sublime.load_settings('Pylinter.sublime-settings')
+# Define placeholder globals for the globals that require the settings file
+PYLINT_SETTINGS = None
+P_PYLINT_ERROR = None
+PYLINT_VERSION = None
 
 class PylSet(object):
     """ Pylinter Settings class"""
@@ -58,7 +64,7 @@ class PylSet(object):
         except AttributeError:
             pass
 
-        return pylint_settings
+        return PYLINT_SETTINGS
 
     @classmethod
     def get(cls, setting_name):
@@ -70,10 +76,9 @@ class PylSet(object):
     @classmethod
     def get_or(cls, setting_name, default):
         settings_obj = cls._get_settings_obj()
-
         if isinstance(settings_obj, collections.Iterable):
             if not setting_name in settings_obj:
-                settings_obj = pylint_settings
+                settings_obj = PYLINT_SETTINGS
         return multiconf.get(settings_obj, setting_name, default)
 
     @classmethod
@@ -86,7 +91,7 @@ class PylSet(object):
         python_path = cls.get_or('python_path', [])
         python_path = PATH_SEPERATOR.join([str(p) for p in python_path])
         working_dir = cls.get_or('working_dir', None)
-        pylint_path = cls.get_lint_path()
+        pylint_path = cls.get_lint_path(py_bin=python_bin)
         pylint_rc = cls.get_or('pylint_rc', None) or ""
         ignore = [t.lower() for t in cls.get_or('ignore', [])]
 
@@ -115,13 +120,13 @@ class PylSet(object):
                 pylint_extra)
 
     @classmethod
-    def get_lint_path(cls):
+    def get_lint_path(cls, py_bin = "python"):
         pylint_path = PylSet.get_or('pylint_path', None)
 
         if not pylint_path:
-            cmd = ["python",
+            cmd = [py_bin,
                    "-c"]
-            if py_version == 2:
+            if PY_VERSION == 2:
                 cmd.append("import pylint; print pylint.__path__[0]")
             else:
                 cmd.append("import pylint; print(pylint.__path__[0])")
@@ -158,25 +163,7 @@ class PylSet(object):
 class PylSetException(Exception):
     pass
 
-PYLINT_VERSION = PylSet.get_lint_version()
 
-# Regular expression to disect Pylint error messages
-if PYLINT_VERSION[0] == 0:
-    # Regular expression to disect Pylint error messages
-    P_PYLINT_ERROR = re.compile(r"""
-        ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
-        \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number
-                                          # e.g. E0101
-        (,\ (?P<hint>.+))?\]\             # optional class or function name
-        (?P<msg>.*)                       # finally, the error message
-        """, re.IGNORECASE | re.VERBOSE)
-else:
-    P_PYLINT_ERROR = re.compile(r"""
-        ^(?P<file>.+?):(?P<line>[0-9]+): # file name and line number
-        (?P<type>[a-z])(?P<errno>\d+):   # message type and error number,
-                                         # e.g. E0101
-        (?P<msg>.*)                      # finally, the error message
-        """, re.IGNORECASE | re.VERBOSE)
 
 # The output format we want PyLint's error messages to be in
 PYLINT_FORMAT = '--msg-template={path}:{line}:{msg_id}:{msg}'
@@ -187,9 +174,39 @@ PYLINTER_ERRORS = {}
 PATH_SEPERATOR = ';' if os.name == "nt" else ':'
 SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
 
+def setPylinterGlobals():
+    global P_PYLINT_ERROR
+    global PYLINT_VERSION
+    if LOADED:
+        PYLINT_VERSION = PylSet.get_lint_version()
+        # Regular expression to disect Pylint error messages
+        if PYLINT_VERSION[0] == 0:
+            # Regular expression to disect Pylint error messages
+            P_PYLINT_ERROR = re.compile(r"""
+                ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
+                \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number
+                                                  # e.g. E0101
+                (,\ (?P<hint>.+))?\]\             # optional class or function name
+                (?P<msg>.*)                       # finally, the error message
+                """, re.IGNORECASE | re.VERBOSE)
+        else:
+            P_PYLINT_ERROR = re.compile(r"""
+                ^(?P<file>.+?):(?P<line>[0-9]+): # file name and line number
+                (?P<type>[a-z])(?P<errno>\d+):   # message type and error number,
+                                                 # e.g. E0101
+                (?P<msg>.*)                      # finally, the error message
+                """, re.IGNORECASE | re.VERBOSE)
+    else:
+        PYLINT_VERSION = None
+
+
 class PylinterCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, **kwargs):
+        global PYLINT_VERSION
+        global LOADED
+        if LOADED:
+            setPylinterGlobals()
 
         settings = PylSet.read_settings()
 
@@ -429,6 +446,9 @@ class PylintThread(threading.Thread):
             err = errlines[-2]
             if not err.startswith("No config file found"):
                 sublime.error_message("Fatal pylint error:\n%s" % (errlines[-2]))
+        # Guard against uninitialised globals
+        if P_PYLINT_ERROR is None:
+            setPylinterGlobals()
 
         for line in lines:
             mdic = re.match(P_PYLINT_ERROR, line)
@@ -451,13 +471,18 @@ class BackgroundPylinter(sublime_plugin.EventListener):
     def __init__(self):
         sublime_plugin.EventListener.__init__(self)
         self.last_selected_line = -1
-        self.message_stay = PylSet.get_or("message_stay", False)
+        # self.message_stay = PylSet.get_or("message_stay", False)
+        self.message_stay = None;
         self.status_active = False
 
     def _last_selected_lineno(self, view):
         return view.rowcol(view.sel()[0].end())[0]
 
     def on_post_save(self, view):
+        # "Lazy" initialisation to guard against
+        # unprepared global settings
+        if self.message_stay is None:
+            self.message_stay = PylSet.get_or("message_stay", False)
         if view.file_name().endswith('.py') and PylSet.get_or('run_on_save',
                                                               False):
             view.run_command('pylinter')
@@ -481,5 +506,11 @@ class BackgroundPylinter(sublime_plugin.EventListener):
                     self.status_active = False
 
 def plugin_loaded():
-    global pylint_settings
-    pylint_settings = sublime.load_settings('Pylinter.sublime-settings')
+    """Load the settings file when the Sublime API is ready"""
+    global LOADED
+    global PYLINT_SETTINGS
+    PYLINT_SETTINGS = sublime.load_settings('Pylinter.sublime-settings')
+    if PYLINT_SETTINGS.get("pylint_path") is None:
+        sublime.error_message("Cannot load Pylinter settings")
+    else:
+        LOADED = True
