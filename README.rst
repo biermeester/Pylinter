@@ -4,7 +4,7 @@ Pylinter Sublime Text 2/3 Plugin
 Introduction
 ============
 
-This is a small plugin for Sublime Text 2 that allows automatic Python
+This is a small plugin for Sublime Text 2 and 3 that allows automatic Python
 source code checking by Pylint.
 
 Since Pylint can take a while before it has completed its task (multiple
@@ -19,8 +19,17 @@ Support for Pylint configuration files is included.
 
     ** Pylint needs to be installed separately!!! **
 
+    If you have installed Pylint into a Virtualenv, you need to launch Sublime
+    Text from that Virtualenv for everything to work correctly. This might be
+    resolved in the future.
+
 Latest changes
 ==============
+
+**2013-11-15**
+
+Some refactoring has been done to make sure Pylinter works better under ST3.
+Also, the error handling, in case `Pylint` cannot be found, is improved.
 
 **2013-09-06**
 

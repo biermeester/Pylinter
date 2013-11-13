@@ -34,11 +34,6 @@ PYTHON_VERSION = sys.version_info[0]
 # To override this, set the 'verbose' setting in the configuration file
 PYLINTER_VERBOSE = False
 
-def speak(*msg):
-    """ Log messages to the console if PYLINTER_VERBOSE is True """
-    if PYLINTER_VERBOSE:
-        print(" - PyLinter: " + " ".join(msg))
-
 # Prevent the console from popping up in Windows
 if os.name == "nt":
     STARTUPINFO = subprocess.STARTUPINFO()
@@ -46,8 +41,53 @@ if os.name == "nt":
 else:
     STARTUPINFO = None
 
-pylint_settings = sublime.load_settings('Pylinter.sublime-settings')
-speak(["kaas", pylint_settings.get("verbose")])
+# The output format we want PyLint's error messages to be in
+PYLINT_FORMAT = '--msg-template={path}:{line}:{msg_id}:{msg}'
+# Pylint error cache
+PYLINTER_ERRORS = {}
+PATH_SEPERATOR = ';' if os.name == "nt" else ':'
+SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
+
+LAST_SELECTED_LINE = -1
+STATUS_ACTIVE = False
+
+# The followig global values will be set by the `set_globals` function
+PYLINT_VERSION = None
+PYLINT_SETTINGS = None
+# Regular expression to disect Pylint error messages
+P_PYLINT_ERROR = None
+
+def speak(*msg):
+    """ Log messages to the console if PYLINTER_VERBOSE is True """
+    if PYLINTER_VERBOSE:
+        print(" - PyLinter: " + " ".join(msg))
+
+def plugin_loaded():
+    """ Set all global values """
+
+    global PYLINT_VERSION, PYLINT_SETTINGS, P_PYLINT_ERROR
+
+    PYLINT_SETTINGS = sublime.load_settings('Pylinter.sublime-settings')
+    PYLINT_VERSION = PylSet.get_lint_version()
+
+    # Pylint version < 1.0
+    if PYLINT_VERSION[0] == 0:
+        # Regular expression to disect Pylint error messages
+        P_PYLINT_ERROR = re.compile(r"""
+            ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
+            \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number
+                                              # e.g. E0101
+            (,\ (?P<hint>.+))?\]\             # optional class or function name
+            (?P<msg>.*)                       # finally, the error message
+            """, re.IGNORECASE | re.VERBOSE)
+    # Pylint version 1.0 or greater
+    else:
+        P_PYLINT_ERROR = re.compile(r"""
+            ^(?P<file>.+?):(?P<line>[0-9]+): # file name and line number
+            (?P<type>[a-z])(?P<errno>\d+):   # message type and error number,
+                                             # e.g. E0101
+            (?P<msg>.*)                      # finally, the error message
+            """, re.IGNORECASE | re.VERBOSE)
 
 class PylSet(object):
     """ Pylinter Settings class"""
@@ -61,7 +101,7 @@ class PylSet(object):
         except AttributeError:
             pass
 
-        return pylint_settings
+        return PYLINT_SETTINGS
 
     @classmethod
     def get(cls, setting_name):
@@ -76,7 +116,7 @@ class PylSet(object):
 
         if isinstance(settings_obj, collections.Iterable):
             if not setting_name in settings_obj:
-                settings_obj = pylint_settings
+                settings_obj = PYLINT_SETTINGS
         return multiconf.get(settings_obj, setting_name, default)
 
     @classmethod
@@ -119,6 +159,11 @@ class PylSet(object):
 
     @classmethod
     def get_lint_path(cls):
+        """ Get the full path to `lint.py`
+
+        If it is not find, Pylinter will try and find it.
+        """
+
         pylint_path = PylSet.get_or('pylint_path', None)
 
         if not pylint_path:
@@ -134,15 +179,18 @@ class PylSet(object):
                                     startupinfo=STARTUPINFO)
             out, _ = proc.communicate()
 
-            if out != "":
+            if out != b"":
                 pylint_path = os.path.join(out.strip(),
                                            b"lint.py").decode("utf-8")
 
         if not pylint_path:
-            msg = "Please define the full path to 'lint.py' in the settings."
+            msg = ("Pylinter could not automatically determined the path to `lint.py`.\n\n"
+                   "Please provide one in the settings file using the `pylint_path` variable.\n\n"
+                   "NOTE:\nIf you are using a Virtualenv, the problem might be resolved by "
+                   "launching Sublime Text from correct Virtualenv.")
             sublime.error_message(msg)
         elif not os.path.exists(pylint_path):
-            msg = "Pylint not found at '{0}'.".format(pylint_path)
+            msg = ("Pylinter could not find `lint.py` at the given path:\n\n'{}'.".format(pylint_path))
             sublime.error_message(msg)
         else:
             speak("Pylint path {0} found".format(pylint_path))
@@ -150,6 +198,7 @@ class PylSet(object):
 
     @classmethod
     def get_lint_version(cls):
+        """ Return the Pylint version as a (x, y, z) tuple """
         import imp
         plp = PylSet.get_lint_path()
         if plp is not None:
@@ -157,41 +206,12 @@ class PylSet(object):
             lintpackage = imp.load_source('lint', pp)
             speak("Pylint version {0} found".format(lintpackage.numversion))
             return lintpackage.numversion
-        return (0,)
+        return (0, 0, 0)
+
 
 class PylSetException(Exception):
     pass
 
-PYLINT_VERSION = PylSet.get_lint_version()
-
-# Regular expression to disect Pylint error messages
-# Pylint version < 1.0
-if PYLINT_VERSION[0] == 0:
-    # Regular expression to disect Pylint error messages
-    P_PYLINT_ERROR = re.compile(r"""
-        ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
-        \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number
-                                          # e.g. E0101
-        (,\ (?P<hint>.+))?\]\             # optional class or function name
-        (?P<msg>.*)                       # finally, the error message
-        """, re.IGNORECASE | re.VERBOSE)
-# Pylint version 1.0 or greater
-else:
-    P_PYLINT_ERROR = re.compile(r"""
-        ^(?P<file>.+?):(?P<line>[0-9]+): # file name and line number
-        (?P<type>[a-z])(?P<errno>\d+):   # message type and error number,
-                                         # e.g. E0101
-        (?P<msg>.*)                      # finally, the error message
-        """, re.IGNORECASE | re.VERBOSE)
-
-# The output format we want PyLint's error messages to be in
-PYLINT_FORMAT = '--msg-template={path}:{line}:{msg_id}:{msg}'
-
-# Pylint error cache
-PYLINTER_ERRORS = {}
-
-PATH_SEPERATOR = ';' if os.name == "nt" else ':'
-SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
 
 class PylinterCommand(sublime_plugin.TextCommand):
 
@@ -454,12 +474,6 @@ class PylintThread(threading.Thread):
 
 
 class BackgroundPylinter(sublime_plugin.EventListener):
-    def __init__(self):
-        sublime_plugin.EventListener.__init__(self)
-        self.last_selected_line = -1
-        self.message_stay = PylSet.get_or("message_stay", False)
-        self.status_active = False
-
     def _last_selected_lineno(self, view):
         return view.rowcol(view.sel()[0].end())[0]
 
@@ -469,23 +483,23 @@ class BackgroundPylinter(sublime_plugin.EventListener):
             view.run_command('pylinter')
 
     def on_selection_modified(self, view):
+        global LAST_SELECTED_LINE, STATUS_ACTIVE
         view_id = view.id()
         if view_id in PYLINTER_ERRORS:
-            last_selected_line = self._last_selected_lineno(view)
-
-            if last_selected_line != self.last_selected_line:
-                self.last_selected_line = last_selected_line
-                if self.last_selected_line in PYLINTER_ERRORS[view_id]:
-                    err_str = PYLINTER_ERRORS[view_id][self.last_selected_line]
-                    if self.message_stay:
+            new_selected_line = self._last_selected_lineno(view)
+            if new_selected_line != LAST_SELECTED_LINE:
+                LAST_SELECTED_LINE = new_selected_line
+                if LAST_SELECTED_LINE in PYLINTER_ERRORS[view_id]:
+                    err_str = PYLINTER_ERRORS[view_id][LAST_SELECTED_LINE]
+                    if PylSet.get_or("message_stay", False):
                         view.set_status('Pylinter', err_str)
-                        self.status_active = True
+                        STATUS_ACTIVE = True
                     else:
                         sublime.status_message(err_str)
-                elif self.status_active:
+                elif STATUS_ACTIVE:
                     view.erase_status('Pylinter')
-                    self.status_active = False
+                    STATUS_ACTIVE = False
 
-def plugin_loaded():
-    global pylint_settings
-    pylint_settings = sublime.load_settings('Pylinter.sublime-settings')
+# In SublimeText 2, we need to call this manually.
+if not ST3:
+    plugin_loaded()
