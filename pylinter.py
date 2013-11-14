@@ -510,7 +510,7 @@ def plugin_loaded():
     global LOADED
     global PYLINT_SETTINGS
     PYLINT_SETTINGS = sublime.load_settings('Pylinter.sublime-settings')
-    if PYLINT_SETTINGS.get("pylint_path") is None:
+    if PYLINT_SETTINGS.get("python_bin") is None:
         sublime.error_message("Cannot load Pylinter settings")
     else:
         LOADED = True
