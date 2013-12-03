@@ -396,7 +396,6 @@ class PylintThread(threading.Thread):
             command = [self.python_bin,
                        self.pylint_path,
                        '--output-format=parseable',
-                       '--include-ids=y',
                        self.file_name]
         else:
             command = [self.python_bin,
