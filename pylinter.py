@@ -132,6 +132,7 @@ class PylSet(object):
         pylint_path = cls.get_or('pylint_path', None)
         pylint_rc = cls.get_or('pylint_rc', None) or ""
         ignore = [t.lower() for t in cls.get_or('ignore', [])]
+        plugins = cls.get_or('plugins', None)
 
         # Add custom runtime settings
         pylint_extra = PylSet.get_or('pylint_extra', None)
@@ -155,7 +156,8 @@ class PylSet(object):
                 pylint_rc,
                 ignore,
                 disable_msgs,
-                pylint_extra)
+                pylint_extra,
+                plugins)
 
     @classmethod
     def get_lint_version(cls):
@@ -163,7 +165,7 @@ class PylSet(object):
         pylint_path = cls.get_or('pylint_path', None)
         python_bin = cls.get_or('python_bin', 'python')
 
-        regex = re.compile(b"[lint.py|pylint]\ ([0-9]+).([0-9]+).([0-9]+)")
+        regex = re.compile(b"[lint.py|pylint] ([0-9]+).([0-9]+).([0-9]+)")
 
         if pylint_path:
             command = [python_bin, pylint_path]
@@ -176,16 +178,18 @@ class PylSet(object):
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
                              startupinfo=STARTUPINFO)
-        output, eoutput = p.communicate()
-        found = regex.search(output).groups()
+        output, _ = p.communicate()
+        found = regex.search(output)
 
-        if len(found) == 3:
-            version = tuple(int(v) for v in found)
-            print("Pylint version %s found" % str(version))
-            return version
+        if found:
+            found = found.groups()
+            if len(found) == 3:
+                version = tuple(int(v) for v in found)
+                print("Pylint version %s found" % str(version))
+                return version
 
         speak("Could not determine Pylint version")
-        return (0, 0, 0)
+        return (1, 0, 0)
 
 
 class PylSetException(Exception):
@@ -354,7 +358,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
 class PylintThread(threading.Thread):
     """ This class creates a seperate thread to run Pylint in """
     def __init__(self, view, pbin, ppath, cwd, lpath, lrc, ignore,
-                 disable_msgs, extra_pylint_args):
+                 disable_msgs, extra_pylint_args, plugins):
         self.view = view
         # Grab the file name here, since view cannot be accessed
         # from anywhere but the main application thread
@@ -367,6 +371,7 @@ class PylintThread(threading.Thread):
         self.ignore = ignore
         self.disable_msgs = disable_msgs
         self.extra_pylint_args = extra_pylint_args
+        self.plugins = plugins
 
         threading.Thread.__init__(self)
 
@@ -384,6 +389,10 @@ class PylintThread(threading.Thread):
             options = ['--reports=n',
                        PYLINT_FORMAT]
 
+            if self.plugins:
+                options.extend(["--load-plugins",
+                                ",".join(self.plugins)])
+
         if self.pylint_rc:
             options.append('--rcfile=%s' % self.pylint_rc)
 
@@ -391,6 +400,7 @@ class PylintThread(threading.Thread):
             options.append('--disable=%s' % self.disable_msgs)
 
         options.append(self.file_name)
+        command.extend(options)
 
         self.set_path()
 
