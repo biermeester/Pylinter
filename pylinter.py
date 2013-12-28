@@ -413,7 +413,7 @@ class PylintThread(threading.Thread):
 
         self.set_path()
 
-        speak("Running command")
+        speak("Running command with Pylint ", str(PYLINT_VERSION))
         speak(" ".join(command))
 
         p = subprocess.Popen(command,
@@ -423,8 +423,13 @@ class PylintThread(threading.Thread):
                              cwd=self.working_dir)
         output, eoutput = p.communicate()
 
-        lines = [line for line in output.decode().split('\n')]  # pylint: disable=E1103
-        elines = [line for line in eoutput.decode().split('\n')]  # pylint:disable=E1103
+        if PYTHON_VERSION == 2:
+            lines = [line for line in output.split('\n')]  # pylint: disable=E1103
+            elines = [line for line in eoutput.split('\n')]  # pylint:disable=E1103
+        else:
+            lines = [line for line in output.decode().split('\n')]  # pylint: disable=E1103
+            elines = [line for line in eoutput.decode().split('\n')]  # pylint:disable=E1103
+
         # Call set_timeout to have the error processing done
         # from the main thread
         sublime.set_timeout(lambda: self.process_errors(lines, elines), 100)
