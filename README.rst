@@ -26,6 +26,11 @@ Support for Pylint configuration files is included.
 Latest changes
 ==============
 
+**2014-03-03**
+
+Added support for Pylint plugins. You can add a list of plugin module names into
+your configuration suing the `plugins` setting.
+
 **2013-11-15**
 
 Some refactoring has been done to make sure Pylinter works better under ST3.
