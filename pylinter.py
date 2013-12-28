@@ -129,7 +129,7 @@ class PylSet(object):
         python_path = cls.get_or('python_path', [])
         python_path = PATH_SEPERATOR.join([str(p) for p in python_path])
         working_dir = cls.get_or('working_dir', None)
-        pylint_path = cls.get_lint_path()
+        pylint_path = cls.get_or('pylint_path', None)
         pylint_rc = cls.get_or('pylint_rc', None) or ""
         ignore = [t.lower() for t in cls.get_or('ignore', [])]
 
@@ -158,54 +158,33 @@ class PylSet(object):
                 pylint_extra)
 
     @classmethod
-    def get_lint_path(cls):
-        """ Get the full path to `lint.py`
-
-        If it is not find, Pylinter will try and find it.
-        """
-
-        pylint_path = PylSet.get_or('pylint_path', None)
-
-        if not pylint_path:
-            cmd = ["python",
-                   "-c"]
-            if PYTHON_VERSION == 2:
-                cmd.append("import pylint; print pylint.__path__[0]")
-            else:
-                cmd.append("import pylint; print(pylint.__path__[0])")
-            proc = subprocess.Popen(cmd,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
-                                    startupinfo=STARTUPINFO)
-            out, _ = proc.communicate()
-
-            if out != b"":
-                pylint_path = os.path.join(out.strip(),
-                                           b"lint.py").decode("utf-8")
-
-        if not pylint_path:
-            msg = ("Pylinter could not automatically determined the path to `lint.py`.\n\n"
-                   "Please provide one in the settings file using the `pylint_path` variable.\n\n"
-                   "NOTE:\nIf you are using a Virtualenv, the problem might be resolved by "
-                   "launching Sublime Text from correct Virtualenv.")
-            sublime.error_message(msg)
-        elif not os.path.exists(pylint_path):
-            msg = ("Pylinter could not find `lint.py` at the given path:\n\n'{}'.".format(pylint_path))
-            sublime.error_message(msg)
-        else:
-            speak("Pylint path {0} found".format(pylint_path))
-            return pylint_path
-
-    @classmethod
     def get_lint_version(cls):
         """ Return the Pylint version as a (x, y, z) tuple """
-        import imp
-        plp = PylSet.get_lint_path()
-        if plp is not None:
-            pp = os.path.join(os.path.dirname(plp), '__pkginfo__.py')
-            lintpackage = imp.load_source('lint', pp)
-            speak("Pylint version {0} found".format(lintpackage.numversion))
-            return lintpackage.numversion
+        pylint_path = cls.get_or('pylint_path', None)
+        python_bin = cls.get_or('python_bin', 'python')
+
+        regex = re.compile(b"[lint.py|pylint]\ ([0-9]+).([0-9]+).([0-9]+)")
+
+        if pylint_path:
+            command = [python_bin, pylint_path]
+        else:
+            command = ["pylint"]
+
+        command.append("--version")
+
+        p = subprocess.Popen(command,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             startupinfo=STARTUPINFO)
+        output, eoutput = p.communicate()
+        found = regex.search(output).groups()
+
+        if len(found) == 3:
+            version = tuple(int(v) for v in found)
+            print("Pylint version %s found" % str(version))
+            return version
+
+        speak("Could not determine Pylint version")
         return (0, 0, 0)
 
 
@@ -392,28 +371,30 @@ class PylintThread(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        if PYLINT_VERSION[0] == 0:
-            command = [self.python_bin,
-                       self.pylint_path,
-                       '--output-format=parseable',
-                       '--include-ids=y',
-                       self.file_name]
+
+        if self.pylint_path:
+            command = [self.python_bin, self.pylint_path]
         else:
-            command = [self.python_bin,
-                       self.pylint_path,
-                       '--reports=n',
-                       PYLINT_FORMAT,
-                       self.file_name]
+            command = ["pylint"]
+
+        if PYLINT_VERSION[0] == 0:
+            options = ['--output-format=parseable',
+                       '--include-ids=y']
+        else:
+            options = ['--reports=n',
+                       PYLINT_FORMAT]
 
         if self.pylint_rc:
-            command.insert(-2, '--rcfile=%s' % self.pylint_rc)
+            options.append('--rcfile=%s' % self.pylint_rc)
 
         if self.disable_msgs:
-            command.insert(-2, '--disable=%s' % self.disable_msgs)
+            options.append('--disable=%s' % self.disable_msgs)
+
+        options.append(self.file_name)
 
         self.set_path()
 
-        speak("Running command with Pylint ", str(PYLINT_VERSION))
+        speak("Running command with Pylint", str(PYLINT_VERSION))
         speak(" ".join(command))
 
         p = subprocess.Popen(command,
