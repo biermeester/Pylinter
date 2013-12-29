@@ -32,7 +32,7 @@ else:
 PYTHON_VERSION = sys.version_info[0]
 
 # To override this, set the 'verbose' setting in the configuration file
-PYLINTER_VERBOSE = False
+PYLINTER_VERBOSE = True
 
 # Prevent the console from popping up in Windows
 if os.name == "nt":
@@ -48,7 +48,9 @@ PYLINTER_ERRORS = {}
 PATH_SEPERATOR = ';' if os.name == "nt" else ':'
 SEPERATOR_PATTERN = ';' if os.name == "nt" else '[:;]'
 
+# The last line selected (i.e. the one we need to display status info for)
 LAST_SELECTED_LINE = -1
+# Indicates if we're displaying info in the status line
 STATUS_ACTIVE = False
 
 # The followig global values will be set by the `set_globals` function
@@ -56,6 +58,10 @@ PYLINT_VERSION = None
 PYLINT_SETTINGS = None
 # Regular expression to disect Pylint error messages
 P_PYLINT_ERROR = None
+
+# The default Pylint command will be stored in this variable. It will either be
+# ["pylint"] or [<python_bin>, <path_to_lint.py>] if the former is not found.
+DEFAULT_PYLINT_COMMAND = None
 
 def speak(*msg):
     """ Log messages to the console if PYLINTER_VERBOSE is True """
@@ -65,9 +71,10 @@ def speak(*msg):
 def plugin_loaded():
     """ Set all global values """
 
-    global PYLINT_VERSION, PYLINT_SETTINGS, P_PYLINT_ERROR
+    global PYLINT_VERSION, PYLINT_SETTINGS, P_PYLINT_ERROR, DEFAULT_PYLINT_COMMAND
 
     PYLINT_SETTINGS = sublime.load_settings('Pylinter.sublime-settings')
+    DEFAULT_PYLINT_COMMAND = PylSet.get_default_pylint_command()
     PYLINT_VERSION = PylSet.get_lint_version()
 
     # Pylint version < 1.0
@@ -160,32 +167,88 @@ class PylSet(object):
                 plugins)
 
     @classmethod
+    def get_default_pylint_command(cls):
+        """ This class method will check if the `pylint` command is available.
+
+        If it is not, it will try and determine the path to the `lint.py` file
+        directly.
+        """
+
+        try:
+            _ = subprocess.Popen("pylint",
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             startupinfo=STARTUPINFO)
+            speak("Pylint executable found")
+            return ["pylint"]
+        except OSError:
+            speak("Pylint executable *not* found")
+            speak("Seaching for lint.py module...")
+
+        cmd = ["python", "-c"]
+
+        if PYTHON_VERSION == 2:
+            cmd.append("import pylint; print pylint.__path__[0]")
+        else:
+            cmd.append("import pylint; print(pylint.__path__[0])")
+
+        proc = subprocess.Popen(cmd,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                startupinfo=STARTUPINFO)
+
+        out, _ = proc.communicate()
+
+        if out != b"":
+            pylint_path = os.path.join(out.strip(),
+                                       b"lint.py").decode("utf-8")
+
+        if not pylint_path:
+            msg = ("Pylinter could not automatically determined the path to `lint.py`.\n\n"
+                   "Please provide one in the settings file using the `pylint_path` variable.\n\n"
+                   "NOTE:\nIf you are using a Virtualenv, the problem might be resolved by "
+                   "launching Sublime Text from correct Virtualenv.")
+            sublime.error_message(msg)
+        elif not os.path.exists(pylint_path):
+            msg = ("Pylinter could not find `lint.py` at the given path:\n\n'{}'.".format(pylint_path))
+            sublime.error_message(msg)
+        else:
+            speak("Pylint path {0} found".format(pylint_path))
+            python_bin = cls.get_or('python_bin', 'python')
+            return [python_bin, pylint_path]
+
+    @classmethod
     def get_lint_version(cls):
         """ Return the Pylint version as a (x, y, z) tuple """
         pylint_path = cls.get_or('pylint_path', None)
         python_bin = cls.get_or('python_bin', 'python')
+        found = None
 
         regex = re.compile(b"[lint.py|pylint] ([0-9]+).([0-9]+).([0-9]+)")
 
         if pylint_path:
             command = [python_bin, pylint_path]
         else:
-            command = ["pylint"]
+            command = list(DEFAULT_PYLINT_COMMAND)
 
         command.append("--version")
 
-        p = subprocess.Popen(command,
+        try:
+            p = subprocess.Popen(command,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
                              startupinfo=STARTUPINFO)
-        output, _ = p.communicate()
-        found = regex.search(output)
+            output, _ = p.communicate()
+            found = regex.search(output)
+        except OSError:
+            msg = "Pylinter could not find '%s'" % command[-2]
+            sublime.error_message(msg)
 
         if found:
             found = found.groups()
             if len(found) == 3:
                 version = tuple(int(v) for v in found)
-                print("Pylint version %s found" % str(version))
+                speak("Pylint version %s found" % str(version))
                 return version
 
         speak("Could not determine Pylint version")
@@ -199,7 +262,7 @@ class PylSetException(Exception):
 class PylinterCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, **kwargs):
-
+        """ Run a Pylinter command """
         settings = PylSet.read_settings()
 
         if not settings:
@@ -226,11 +289,13 @@ class PylinterCommand(sublime_plugin.TextCommand):
                 self.progress_tracker(thread)
 
     def dump_errors(self):
+        """ Print the found pylint errors """
         import pprint
         pprint.pprint(PYLINTER_ERRORS)
 
     @classmethod
     def show_errors(cls, view):
+        """ Display the errors for the given view """
         # Icons to be used in the margin
         if PylSet.get_or('use_icons', False):
             if ST3:
@@ -274,6 +339,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
                              region_flag)
 
     def popup_error_list(self):
+        """ Display a popup list of the errors found """
         view_id = self.view.id()
 
         if not view_id in PYLINTER_ERRORS:
@@ -291,6 +357,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
                                              key=lambda error: error[1]))
 
         def on_done(selected_item):
+            """ Jump to the line of the item that was selected from the list """
             if selected_item == -1:
                 return
             self.view.run_command("goto_line",
@@ -299,6 +366,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
         self.view.window().show_quick_panel(list(panel_items), on_done)
 
     def progress_tracker(self, thread, i=0):
+        """ Display spinner while Pylint is running """
         icons = [u"◐", u"◓", u"◑", u"◒"]
         sublime.status_message("PyLinting %s" % icons[i])
         if thread.is_alive():
@@ -308,6 +376,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
             sublime.status_message("")
 
     def toggle_regions(self):
+        """ Show/hide the errors found """
         view_id = self.view.id()
         try:
             if PYLINTER_ERRORS[view_id]['visible']:
@@ -322,6 +391,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
             pass
 
     def add_ignore(self, edit):
+        """ Make pylint ignore the line that the carret is on """
         global PYLINTER_ERRORS
 
         view_id = self.view.id()
@@ -349,6 +419,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
             self.view.end_edit(edit)
 
     def is_enabled(self):
+        """ This plugin is only enabled for Python modules """
         file_name = self.view.file_name()
         if file_name:
             return file_name.endswith('.py')
@@ -357,6 +428,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
 
 class PylintThread(threading.Thread):
     """ This class creates a seperate thread to run Pylint in """
+
     def __init__(self, view, pbin, ppath, cwd, lpath, lrc, ignore,
                  disable_msgs, extra_pylint_args, plugins):
         self.view = view
@@ -376,11 +448,11 @@ class PylintThread(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-
+        """ Run the pylint command """
         if self.pylint_path:
             command = [self.python_bin, self.pylint_path]
         else:
-            command = ["pylint"]
+            command = DEFAULT_PYLINT_COMMAND
 
         if PYLINT_VERSION[0] == 0:
             options = ['--output-format=parseable',
@@ -426,6 +498,7 @@ class PylintThread(threading.Thread):
         sublime.set_timeout(lambda: self.process_errors(lines, elines), 100)
 
     def set_path(self):
+        """ Adjust the PYTHONPATH variable for this thread """
         original = os.environ.get('PYTHONPATH', '')
 
         speak("Current PYTHONPATH is '%s'" % original)
@@ -441,8 +514,8 @@ class PylintThread(threading.Thread):
 
 
     def process_errors(self, lines, errlines):
+        """ Process the error found """
         view_id = self.view.id()
-        global PYLINTER_ERRORS
         PYLINTER_ERRORS[view_id] = {"visible": True}
 
         # if pylint raised any exceptions, propogate those to the user, for
@@ -470,15 +543,18 @@ class PylintThread(threading.Thread):
 
 
 class BackgroundPylinter(sublime_plugin.EventListener):
+    """ Process Sublime Text events """
     def _last_selected_lineno(self, view):
         return view.rowcol(view.sel()[0].end())[0]
 
     def on_post_save(self, view):
-        if view.file_name().endswith('.py') and PylSet.get_or('run_on_save',
-                                                              False):
+        """ Run Pylint on file save """
+        if (view.file_name().endswith('.py') and
+            PylSet.get_or('run_on_save', False)):
             view.run_command('pylinter')
 
     def on_selection_modified(self, view):
+        """ Show errors in the status line when the carret/selection moves """
         global LAST_SELECTED_LINE, STATUS_ACTIVE
         view_id = view.id()
         if view_id in PYLINTER_ERRORS:
