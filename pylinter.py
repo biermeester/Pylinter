@@ -131,6 +131,7 @@ class PylSet(object):
         global PYLINTER_VERBOSE
 
         PYLINTER_VERBOSE = cls.get_or('verbose', False)
+
         speak("Verbose is", str(PYLINTER_VERBOSE))
         python_bin = cls.get_or('python_bin', 'python')
         python_path = cls.get_or('python_path', [])
@@ -452,7 +453,7 @@ class PylintThread(threading.Thread):
         if self.pylint_path:
             command = [self.python_bin, self.pylint_path]
         else:
-            command = DEFAULT_PYLINT_COMMAND
+            command = list(DEFAULT_PYLINT_COMMAND)
 
         if PYLINT_VERSION[0] == 0:
             options = ['--output-format=parseable',
