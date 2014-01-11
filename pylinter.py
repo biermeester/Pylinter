@@ -129,7 +129,7 @@ class PylSet(object):
         python_path = cls.get_or('python_path', [])
         python_path = PATH_SEPERATOR.join([str(p) for p in python_path])
         working_dir = cls.get_or('working_dir', None)
-        pylint_path = cls.get_or('pylint_path', None)
+        pylint_path = cls.get_lint_path()
         pylint_rc = cls.get_or('pylint_rc', None) or ""
         ignore = [t.lower() for t in cls.get_or('ignore', [])]
         plugins = cls.get_or('plugins', None)
@@ -160,9 +160,50 @@ class PylSet(object):
                 plugins)
 
     @classmethod
+    def get_lint_path(cls):
+        """ Get the full path to `lint.py`
+
+        If it is not find, Pylinter will try and find it.
+        """
+
+        pylint_path = cls.get_or('pylint_path', None)
+
+        if not pylint_path:
+            cmd = ["python", "-c"]
+
+            if PYTHON_VERSION == 2:
+                cmd.append("import pylint; print pylint.__path__[0]")
+            else:
+                cmd.append("import pylint; print(pylint.__path__[0])")
+
+            proc = subprocess.Popen(cmd,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    startupinfo=STARTUPINFO)
+
+            out, _ = proc.communicate()
+
+            if out != b"":
+                pylint_path = os.path.join(out.strip(),
+                                           b"lint.py").decode("utf-8")
+
+        if not pylint_path:
+            msg = ("Pylinter could not automatically determined the path to `lint.py`.\n\n"
+                   "Please provide one in the settings file using the `pylint_path` variable.\n\n"
+                   "NOTE:\nIf you are using a Virtualenv, the problem might be resolved by "
+                   "launching Sublime Text from correct Virtualenv.")
+            sublime.error_message(msg)
+        elif not os.path.exists(pylint_path):
+            msg = ("Pylinter could not find `lint.py` at the given path:\n\n'{}'.".format(pylint_path))
+            sublime.error_message(msg)
+        else:
+            speak("Pylint path {0} found".format(pylint_path))
+            return pylint_path
+
+    @classmethod
     def get_lint_version(cls):
         """ Return the Pylint version as a (x, y, z) tuple """
-        pylint_path = cls.get_or('pylint_path', None)
+        pylint_path = cls.get_lint_path()
         python_bin = cls.get_or('python_bin', 'python')
 
         regex = re.compile(b"[lint.py|pylint] ([0-9]+).([0-9]+).([0-9]+)")
@@ -499,3 +540,4 @@ class BackgroundPylinter(sublime_plugin.EventListener):
 # In SublimeText 2, we need to call this manually.
 if not ST3:
     plugin_loaded()
+
