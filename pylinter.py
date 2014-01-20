@@ -86,7 +86,7 @@ def plugin_loaded():
                                               # e.g. E0101
             (,\ (?P<hint>.+))?\]\             # optional class or function name
             (?P<msg>.*)                       # finally, the error message
-            """, re.IGNORECASE | re.VERBOSE | re.DOTALL)
+            """, re.IGNORECASE | re.VERBOSE)
     # Pylint version 1.0 or greater
     else:
         P_PYLINT_ERROR = re.compile(r"""
@@ -94,7 +94,7 @@ def plugin_loaded():
             (?P<type>[a-z])(?P<errno>\d+):   # message type and error number,
                                              # e.g. E0101
             (?P<msg>.*)                      # finally, the error message
-            """, re.IGNORECASE | re.VERBOSE | re.DOTALL)
+            """, re.IGNORECASE | re.VERBOSE)
 
 class PylSet(object):
     """ Pylinter Settings class"""
