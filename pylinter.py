@@ -176,12 +176,17 @@ class PylSet(object):
         """
 
         try:
-            _ = subprocess.Popen("pylint",
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             startupinfo=STARTUPINFO)
-            speak("Pylint executable found")
-            return ["pylint"]
+            python_bin = cls.get_or('python_bin', 'python')
+            pylint_path = cls.get_or('pylint_path', None)
+            if pylint_path is None:
+                _ = subprocess.Popen("pylint",
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 startupinfo=STARTUPINFO)
+                speak("Pylint executable found")
+                return ["pylint"]
+            else:
+                return [python_bin, pylint_path]
         except OSError:
             speak("Pylint executable *not* found")
             speak("Seaching for lint.py module...")
@@ -200,6 +205,7 @@ class PylSet(object):
 
         out, _ = proc.communicate()
 
+        pylint_path = None
         if out != b"":
             pylint_path = os.path.join(out.strip(),
                                        b"lint.py").decode("utf-8")
