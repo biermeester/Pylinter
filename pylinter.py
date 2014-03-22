@@ -17,6 +17,8 @@ import subprocess
 import collections
 import sublime
 import sublime_plugin
+import string
+import fnmatch
 
 #pylint: disable=E1101
 
@@ -63,6 +65,12 @@ P_PYLINT_ERROR = None
 # ["pylint"] or [<python_bin>, <path_to_lint.py>] if the former is not found.
 DEFAULT_PYLINT_COMMAND = None
 
+def isstr(s):
+    try:
+        return isinstance(s, basestring)
+    except NameError:
+        return isinstance(s, str)
+
 def speak(*msg):
     """ Log messages to the console if PYLINTER_VERBOSE is True """
     if PYLINTER_VERBOSE:
@@ -100,14 +108,33 @@ class PylSet(object):
     """ Pylinter Settings class"""
     @classmethod
     def _get_settings_obj(cls):
+
+        proj_settings = {}
+        if not ST3:
+            project_file = cls.get_project_file()
+            if project_file is not None:
+                try:
+                    import json
+                    data = json.load(open(project_file, 'rb'))
+                except:
+                    speak("No project settings")
+                else:
+                    proj_settings = data.get('settings', {}).get('pylinter', {})
+
         try:
             view_settings = sublime.active_window().active_view().settings()
             view_settings = view_settings.get('pylinter')
             if view_settings:
+                if not ST3:
+                    for key, val in proj_settings.iteriems():
+                        view_settings.set(key, val)
                 return view_settings
         except AttributeError:
             pass
 
+        if not ST3:
+            for key, val in proj_settings.iteritems():
+                PYLINT_SETTINGS.set(key, val)
         return PYLINT_SETTINGS
 
     @classmethod
@@ -124,7 +151,51 @@ class PylSet(object):
         if isinstance(settings_obj, collections.Iterable):
             if not setting_name in settings_obj:
                 settings_obj = PYLINT_SETTINGS
-        return multiconf.get(settings_obj, setting_name, default)
+        val = multiconf.get(settings_obj, setting_name, default)
+        if val is None:
+            val = settings_obj.get(setting_name)
+        return cls.apply_path_templates(setting_name, val)
+
+    @classmethod
+    def get_project_file(cls):
+        """ return the project_file_path or None if no project is active
+        """
+        window = sublime.active_window()
+        if window is None:
+            return
+        project_file_name = None
+        if not hasattr(window, 'project_file_name'):
+            for folder in window.folders():
+                for root, dirnames, filenames in os.walk(folder):
+                    for filename in fnmatch.filter(filenames, '*.sublime-project'):
+                        project_file_name = os.path.join(root, filename)
+        else:
+            project_file_name = sublime.active_window().project_file_name()
+        return project_file_name
+
+    @classmethod
+    def get_project_path(cls):
+        """ return the directory of the project fileh or None if no project is active
+        """
+        project_file_name = cls.get_project_file()
+        if project_file_name is not None:
+            return os.path.dirname(project_file_name)
+
+    @classmethod
+    def apply_path_templates(cls, setting_name, val):
+        """ replace variables in paths from settings
+            setting_name is passed in to allow substitution in variables passed
+            into the template without hitting recursion
+        """
+        if not isstr(val):
+            return val
+
+        var_values = {
+            'project_path': cls.get_project_path(),
+            'working_dir': None if setting_name == 'working_dir' else cls.get_or('working_dir', None)
+            }
+        val = string.Template(val).safe_substitute(dict((k, v) for k, v in var_values.items() if v is not None))
+        return val
 
     @classmethod
     def read_settings(cls):
@@ -191,7 +262,7 @@ class PylSet(object):
             speak("Pylint executable *not* found")
             speak("Seaching for lint.py module...")
 
-        cmd = ["python", "-c"]
+        cmd = [python_bin, "-c"]
 
         if PYTHON_VERSION == 2:
             cmd.append("import pylint; print pylint.__path__[0]")
