@@ -200,6 +200,7 @@ class PylSet(object):
 
         out, _ = proc.communicate()
 
+        pylint_path = ""
         if out != b"":
             pylint_path = os.path.join(out.strip(),
                                        b"lint.py").decode("utf-8")
