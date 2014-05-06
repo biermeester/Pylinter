@@ -17,6 +17,7 @@ import subprocess
 import collections
 import sublime
 import sublime_plugin
+import distutils.spawn
 
 #pylint: disable=E1101
 
@@ -179,14 +180,9 @@ class PylSet(object):
             python_bin = cls.get_or('python_bin', 'python')
             pylint_path = cls.get_or('pylint_path', None)
             if pylint_path is None:
-                _ = subprocess.Popen("pylint",
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 startupinfo=STARTUPINFO)
-                speak("Pylint executable found")
-                return ["pylint"]
-            else:
-                return [python_bin, pylint_path]
+                pylint_path = distutils.spawn.find_executable("pylint")
+                speak("Pylint executable found at '%s'." % pylint_path)
+            return [python_bin, pylint_path]
         except OSError:
             speak("Pylint executable *not* found")
             speak("Seaching for lint.py module...")
