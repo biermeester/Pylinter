@@ -54,10 +54,7 @@ LAST_SELECTED_LINE = -1
 STATUS_ACTIVE = False
 
 # The followig global values will be set by the `set_globals` function
-PYLINT_VERSION = None
 PYLINT_SETTINGS = None
-# Regular expression to disect Pylint error messages
-P_PYLINT_ERROR = None
 
 # The default Pylint command will be stored in this variable. It will either be
 # ["pylint"] or [<python_bin>, <path_to_lint.py>] if the former is not found.
@@ -71,30 +68,10 @@ def speak(*msg):
 def plugin_loaded():
     """ Set all global values """
 
-    global PYLINT_VERSION, PYLINT_SETTINGS, P_PYLINT_ERROR, DEFAULT_PYLINT_COMMAND
+    global PYLINT_SETTINGS, DEFAULT_PYLINT_COMMAND
 
     PYLINT_SETTINGS = sublime.load_settings('Pylinter.sublime-settings')
     DEFAULT_PYLINT_COMMAND = PylSet.get_default_pylint_command()
-    PYLINT_VERSION = PylSet.get_lint_version()
-
-    # Pylint version < 1.0
-    if PYLINT_VERSION[0] == 0:
-        # Regular expression to disect Pylint error messages
-        P_PYLINT_ERROR = re.compile(r"""
-            ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
-            \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number
-                                              # e.g. E0101
-            (,\ (?P<hint>.+))?\]\             # optional class or function name
-            (?P<msg>.*)                       # finally, the error message
-            """, re.IGNORECASE | re.VERBOSE)
-    # Pylint version 1.0 or greater
-    else:
-        P_PYLINT_ERROR = re.compile(r"""
-            ^(?P<file>.+?):(?P<line>[0-9]+): # file name and line number
-            (?P<type>[a-z])(?P<errno>\d+):   # message type and error number,
-                                             # e.g. E0101
-            (?P<msg>.*)                      # finally, the error message
-            """, re.IGNORECASE | re.VERBOSE)
 
 class PylSet(object):
     """ Pylinter Settings class"""
@@ -127,7 +104,7 @@ class PylSet(object):
         return multiconf.get(settings_obj, setting_name, default)
 
     @classmethod
-    def read_settings(cls):
+    def read_settings(cls, pylint_version):
         global PYLINTER_VERBOSE
 
         PYLINTER_VERBOSE = cls.get_or('verbose', False)
@@ -148,7 +125,7 @@ class PylSet(object):
         disable = cls.get_or('disable', [])
         # Added ignore for trailing whitespace (false positives bug in
         # pylint 1.0.0)
-        if PYLINT_VERSION[0] != 0:
+        if pylint_version[0] != 0:
             disable.append('C0303')
         disable_msgs = ",".join(disable)
 
@@ -270,7 +247,9 @@ class PylinterCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, **kwargs):
         """ Run a Pylinter command """
-        settings = PylSet.read_settings()
+
+        self.setup_pylint()
+        settings = PylSet.read_settings(self.pylint_version)
 
         if not settings:
             return
@@ -291,9 +270,39 @@ class PylinterCommand(sublime_plugin.TextCommand):
             speak("Running Pylinter on %s" % self.view.file_name())
 
             if self.view.file_name().endswith('.py'):
-                thread = PylintThread(self.view, *settings)
+                thread = PylintThread(self.view,
+                                      self.pylint_version,
+                                      self.p_pylint_error,
+                                      *settings)
                 thread.start()
                 self.progress_tracker(thread)
+
+    def setup_pylint(self):
+        """ set up the per-run pylint values """
+
+        # need to check this every time as we may be running
+        # out of a virtualenvironment with a separate pylint install
+        self.pylint_version = PylSet.get_lint_version()
+
+        # Pylint version < 1.0
+        if self.pylint_version[0] == 0:
+            # Regular expression to disect Pylint error messages
+            self.p_pylint_error = re.compile(r"""
+                ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
+                \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number
+                                                  # e.g. E0101
+                (,\ (?P<hint>.+))?\]\             # optional class or function name
+                (?P<msg>.*)                       # finally, the error message
+                """, re.IGNORECASE | re.VERBOSE)
+        # Pylint version 1.0 or greater
+        else:
+            self.p_pylint_error = re.compile(r"""
+                ^(?P<file>.+?):(?P<line>[0-9]+): # file name and line number
+                (?P<type>[a-z])(?P<errno>\d+):   # message type and error number,
+                                                 # e.g. E0101
+                (?P<msg>.*)                      # finally, the error message
+                """, re.IGNORECASE | re.VERBOSE)
+
 
     def dump_errors(self):
         """ Print the found pylint errors """
@@ -436,8 +445,9 @@ class PylinterCommand(sublime_plugin.TextCommand):
 class PylintThread(threading.Thread):
     """ This class creates a seperate thread to run Pylint in """
 
-    def __init__(self, view, pbin, ppath, cwd, lpath, lrc, ignore,
-                 disable_msgs, extra_pylint_args, plugins):
+    def __init__(self, view, pylint_version, p_pylint_error, pbin, ppath,
+                 cwd, lpath, lrc, ignore, disable_msgs, extra_pylint_args,
+                 plugins):
         self.view = view
         # Grab the file name here, since view cannot be accessed
         # from anywhere but the main application thread
@@ -451,6 +461,8 @@ class PylintThread(threading.Thread):
         self.disable_msgs = disable_msgs
         self.extra_pylint_args = extra_pylint_args
         self.plugins = plugins
+        self.pylint_version = pylint_version
+        self.p_pylint_error = p_pylint_error
 
         threading.Thread.__init__(self)
 
@@ -461,7 +473,7 @@ class PylintThread(threading.Thread):
         else:
             command = list(DEFAULT_PYLINT_COMMAND)
 
-        if PYLINT_VERSION[0] == 0:
+        if self.pylint_version[0] == 0:
             options = ['--output-format=parseable',
                        '--include-ids=y']
         else:
@@ -483,7 +495,7 @@ class PylintThread(threading.Thread):
 
         self.set_path()
 
-        speak("Running command with Pylint", str(PYLINT_VERSION))
+        speak("Running command with Pylint", str(self.pylint_version))
         speak(" ".join(command))
 
         p = subprocess.Popen(command,
@@ -533,7 +545,7 @@ class PylintThread(threading.Thread):
                 sublime.error_message("Fatal pylint error:\n%s" % (errlines[-2]))
 
         for line in lines:
-            mdic = re.match(P_PYLINT_ERROR, line)
+            mdic = re.match(self.p_pylint_error, line)
             if mdic:
                 m = mdic.groupdict()
                 line_num = int(m['line']) - 1
