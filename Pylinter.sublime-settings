@@ -31,5 +31,10 @@
     "ignore": [],
     // a list of strings of individual errors to disable, ex: ["C0301"]
     "disable": [],
+    // a list of strings of individual errors to enable,
+    // if the entire parent group has been disabled.
+    // Eg: "disable": ["C"], "enable_in_disabled": ["C0111"]
+    // disables all coding standard violations except "Missing docstring".
+    "enable_in_disabled": [],
     "plugins": []
 }

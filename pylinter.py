@@ -152,6 +152,9 @@ class PylSet(object):
             disable.append('C0303')
         disable_msgs = ",".join(disable)
 
+        enable = cls.get_or('enable_in_disabled', [])
+        enable_msgs = ",".join(enable)
+
         if pylint_rc and not os.path.exists(pylint_rc):
             msg = "Pylint configuration not found at '%s'." % pylint_rc
             sublime.error_message(msg)
@@ -163,6 +166,7 @@ class PylSet(object):
                 pylint_path,
                 pylint_rc,
                 ignore,
+                enable_msgs,
                 disable_msgs,
                 pylint_extra,
                 plugins)
@@ -437,7 +441,7 @@ class PylintThread(threading.Thread):
     """ This class creates a seperate thread to run Pylint in """
 
     def __init__(self, view, pbin, ppath, cwd, lpath, lrc, ignore,
-                 disable_msgs, extra_pylint_args, plugins):
+                 enable_msgs, disable_msgs, extra_pylint_args, plugins):
         self.view = view
         # Grab the file name here, since view cannot be accessed
         # from anywhere but the main application thread
@@ -448,6 +452,7 @@ class PylintThread(threading.Thread):
         self.pylint_path = lpath
         self.pylint_rc = lrc
         self.ignore = ignore
+        self.enable_msgs = enable_msgs
         self.disable_msgs = disable_msgs
         self.extra_pylint_args = extra_pylint_args
         self.plugins = plugins
@@ -477,6 +482,9 @@ class PylintThread(threading.Thread):
 
         if self.disable_msgs:
             options.append('--disable=%s' % self.disable_msgs)
+
+        if self.enable_msgs:
+            options.append('--enable=%s' % self.enable_msgs)
 
         options.append(self.file_name)
         command.extend(options)
