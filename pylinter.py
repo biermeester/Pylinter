@@ -267,6 +267,7 @@ class PylSetException(Exception):
 
 
 class PylinterCommand(sublime_plugin.TextCommand):
+    running_threads = {}
 
     def run(self, edit, **kwargs):
         """ Run a Pylinter command """
@@ -291,7 +292,17 @@ class PylinterCommand(sublime_plugin.TextCommand):
             speak("Running Pylinter on %s" % self.view.file_name())
 
             if self.view.file_name().endswith('.py'):
+                fname = self.view.file_name()
+                if fname in self.running_threads:
+                    speak("Pylinter: Killing former thread for file", fname)
+                    try:
+                        self.running_threads[fname].stop()
+                        del self.running_threads[fname]
+                    except KeyError:
+                        # might've been already deleted by the progress tracker
+                        pass
                 thread = PylintThread(self.view, *settings)
+                self.running_threads[fname] = thread
                 thread.start()
                 self.progress_tracker(thread)
 
@@ -381,6 +392,16 @@ class PylinterCommand(sublime_plugin.TextCommand):
             sublime.set_timeout(lambda: self.progress_tracker(thread, i), 100)
         else:
             sublime.status_message("")
+            try:
+                # If we do not check, we are going to remove
+                # the entry corresponding to the next running
+                # command/thread
+                if self.running_threads[thread.file_name] == thread:
+                    del self.running_threads[thread.file_name]
+            except KeyError:
+                # might've been already deleted by the re-running 
+                # a thread with current filename
+                pass
 
     def toggle_regions(self):
         """ Show/hide the errors found """
@@ -451,8 +472,14 @@ class PylintThread(threading.Thread):
         self.disable_msgs = disable_msgs
         self.extra_pylint_args = extra_pylint_args
         self.plugins = plugins
+        self.subprocess = None
 
         threading.Thread.__init__(self)
+
+    def stop(self):
+        """ Stops the current thread, killing the pylint subprocess """
+        if self.subprocess is not None:
+            self.subprocess.kill()
 
     def run(self):
         """ Run the pylint command """
@@ -491,7 +518,10 @@ class PylintThread(threading.Thread):
                              stderr=subprocess.PIPE,
                              startupinfo=STARTUPINFO,
                              cwd=self.working_dir)
+        self.subprocess = p
         output, eoutput = p.communicate()
+        # It's over! No subprocess anymore in case we're force-stopped
+        self.subprocess = None
 
         if PYTHON_VERSION == 2:
             lines = [line for line in output.split('\n')]  # pylint: disable=E1103
