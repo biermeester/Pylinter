@@ -478,6 +478,9 @@ class PylintThread(threading.Thread):
         if self.disable_msgs:
             options.append('--disable=%s' % self.disable_msgs)
 
+        if self.extra_pylint_args:
+            options.append(self.extra_pylint_args)
+
         options.append(self.file_name)
         command.extend(options)
 
