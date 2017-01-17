@@ -32,6 +32,6 @@
     // a list of strings of individual errors to disable, ex: ["C0301"]
     "disable": [],
     "plugins": [],
-    // extra arguments to pass pylint, ex:  "--extension-pkg-whitelist=lxml"
-    "pylint_extra": null
+    // extra arguments to pass pylint, ex: ["--extension-pkg-whitelist=lxml"]
+    "pylint_extra": []
 }

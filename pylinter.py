@@ -143,7 +143,7 @@ class PylSet(object):
         plugins = cls.get_or('plugins', None)
 
         # Add custom runtime settings
-        pylint_extra = PylSet.get_or('pylint_extra', None)
+        pylint_extra = cls.get_or('pylint_extra', None)
 
         disable = cls.get_or('disable', [])
         # Added ignore for trailing whitespace (false positives bug in
@@ -479,7 +479,8 @@ class PylintThread(threading.Thread):
             options.append('--disable=%s' % self.disable_msgs)
 
         if self.extra_pylint_args:
-            options.append(self.extra_pylint_args)
+            for extra_arg in self.extra_pylint_args:
+                options.append(extra_arg)
 
         options.append(self.file_name)
         command.extend(options)
