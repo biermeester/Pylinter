@@ -529,7 +529,8 @@ class PylintThread(threading.Thread):
         # E. g. trying to disable a message id that does not exist.
         if len(errlines) > 1:
             err = errlines[-2]
-            if not err.startswith("No config file found"):
+            if not (err.startswith("No config file found")
+                or err.startswith("Using config file")):
                 sublime.error_message("Fatal pylint error:\n%s" % (errlines[-2]))
 
         for line in lines:
