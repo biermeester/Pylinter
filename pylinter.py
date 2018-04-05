@@ -525,11 +525,12 @@ class PylintThread(threading.Thread):
         view_id = self.view.id()
         PYLINTER_ERRORS[view_id] = {"visible": True}
 
-        # if pylint raised any exceptions, propogate those to the user, for
-        # instance, trying to disable a messaage id that does not exist
+        # If pylint raised any exceptions, propogate those to the user.
+        # E. g. trying to disable a message id that does not exist.
         if len(errlines) > 1:
             err = errlines[-2]
-            if not err.startswith("No config file found"):
+            if not (err.startswith("No config file found")
+                or err.startswith("Using config file")):
                 sublime.error_message("Fatal pylint error:\n%s" % (errlines[-2]))
 
         for line in lines:
