@@ -478,6 +478,13 @@ class PylintThread(threading.Thread):
         if self.disable_msgs:
             options.append('--disable=%s' % self.disable_msgs)
 
+        if isinstance(self.extra_pylint_args, dict):
+            for arg in self.extra_pylint_args.items():
+                options.append('--%s=%s' % arg)
+        elif isinstance(self.extra_pylint_args, list):
+            for arg in self.extra_pylint_args:
+                options.append(arg)
+
         options.append(self.file_name)
         command.extend(options)
 
