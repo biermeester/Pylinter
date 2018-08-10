@@ -144,13 +144,13 @@ provide a full path to the ``lint.py`` module of your Pylint installation!
   the margin.
 
 * **pylint_extra**: Any extra command line arguemtns to ``pylint``. This can be a
-  ``dict`` as
+  ``dict`` as ::
   
     "pylint_extra": {
         "max-line-length": 120
     }
 
-  or a ``list`` as
+  or a ``list`` as ::
 
     "pylint_extra": ["--max-line-length=120"]
 
