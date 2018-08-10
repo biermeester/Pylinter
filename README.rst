@@ -143,6 +143,17 @@ provide a full path to the ``lint.py`` module of your Pylint installation!
 * **use_icons**: Set to ``true`` if you want to display icons instead of dots in
   the margin.
 
+* **pylint_extra**: Any extra command line arguemtns to ``pylint``. This can be a
+  ``dict`` as ::
+  
+    "pylint_extra": {
+        "max-line-length": 120
+    }
+
+  or a ``list`` as ::
+
+    "pylint_extra": ["--max-line-length=120"]
+
 Multiconf
 ~~~~~~~~~
 
