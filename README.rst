@@ -72,7 +72,7 @@ Thanks to KristoforMaynard for the following additions:
 **2012-09-06**
 
 * Pylinter now allows for platform and/or host specific configuration to be
-  stored in a single configuration file. This is particulary useful for the
+  stored in a single configuration file. This is particularly useful for the
   ``pylint_path`` setting.
 
   Simply change a setting like
@@ -102,7 +102,7 @@ Thanks to KristoforMaynard for the following additions:
   ``#pylint: disable=`` statements/comments.
 * Included wuub's error colouring. Either use the included
   ``MonokaiPylinter.tmTheme`` file, or have a look at it to see how you can
-  colour the different erros and warnings.
+  colour the different errors and warnings.
 
 
 

@@ -53,10 +53,10 @@ LAST_SELECTED_LINE = -1
 # Indicates if we're displaying info in the status line
 STATUS_ACTIVE = False
 
-# The followig global values will be set by the `set_globals` function
+# The following global values will be set by the `set_globals` function
 PYLINT_VERSION = None
 PYLINT_SETTINGS = None
-# Regular expression to disect Pylint error messages
+# Regular expression to dissect Pylint error messages
 P_PYLINT_ERROR = None
 
 # The default Pylint command will be stored in this variable. It will either be
@@ -79,7 +79,7 @@ def plugin_loaded():
 
     # Pylint version < 1.0
     if PYLINT_VERSION[0] == 0:
-        # Regular expression to disect Pylint error messages
+        # Regular expression to dissect Pylint error messages
         P_PYLINT_ERROR = re.compile(r"""
             ^(?P<file>.+?):(?P<line>[0-9]+):\ # file name and line number
             \[(?P<type>[a-z])(?P<errno>\d+)   # message type and error number
@@ -434,7 +434,7 @@ class PylinterCommand(sublime_plugin.TextCommand):
 
 
 class PylintThread(threading.Thread):
-    """ This class creates a seperate thread to run Pylint in """
+    """ This class creates a separate thread to run Pylint in """
 
     def __init__(self, view, pbin, ppath, cwd, lpath, lrc, ignore,
                  disable_msgs, extra_pylint_args, plugins):
@@ -525,8 +525,8 @@ class PylintThread(threading.Thread):
         view_id = self.view.id()
         PYLINTER_ERRORS[view_id] = {"visible": True}
 
-        # if pylint raised any exceptions, propogate those to the user, for
-        # instance, trying to disable a messaage id that does not exist
+        # if pylint raised any exceptions, propagate those to the user, for
+        # instance, trying to disable a message id that does not exist
         if len(errlines) > 1:
             err = errlines[-2]
             if not err.startswith("No config file found"):
